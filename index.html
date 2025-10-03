@@ -146,6 +146,22 @@ body.embed .wrap{ padding-top: 8px; }
         }
       }
       loadGrid();
+        } // ← aquí termina la función loadGrid()
+
+  // ---- Controles por URL (pegar aquí) ----
+  const params = new URLSearchParams(location.search);
+
+  if (params.get('embed') === '1') {
+    document.body.classList.add('embed');
+  }
+  if (params.get('cols'))   document.documentElement.style.setProperty('--cols', params.get('cols'));
+  if (params.get('gap'))    document.documentElement.style.setProperty('--gap', params.get('gap') + 'px');
+  if (params.get('radius')) document.documentElement.style.setProperty('--radius', params.get('radius') + 'px');
+  // ----------------------------------------
+
+  loadGrid();
+  setInterval(loadGrid, 5 * 60 * 1000);
+</script>
       setInterval(loadGrid, 5 * 60 * 1000);
     </script>
   </body>
