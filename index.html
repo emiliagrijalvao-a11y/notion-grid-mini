@@ -2,255 +2,323 @@
 <html lang="es">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Notion Grid Widget</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Grid</title>
     <style>
+      /* ——— Tema blanco + vista angosta tipo Instagram ——— */
       :root{
-        --bg:#ffffff;
-        --text:#111;
+        --ink:#111;
         --muted:#6b7280;
-        --error:#ef4444;
-        --border:#e5e7eb;
-        --chip:#f3f4f6;
-        --chip-text:#111;
+        --line:#e5e7eb;
+        --ghost:#f4f4f5;
       }
       *{box-sizing:border-box;margin:0;padding:0}
-      html,body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,system-ui,sans-serif;line-height:1.45}
-      .wrap{max-width:1120px;margin:0 auto;padding:16px}
-      .toolbar{display:flex;gap:12px;align-items:center;position:sticky;top:0;background:var(--bg);padding:8px 0 12px;border-bottom:1px solid var(--border);z-index:10}
-      .btn{appearance:none;border:1px solid var(--border);background:#111;color:#fff;padding:8px 14px;font-weight:600;border-radius:10px;cursor:pointer}
-      .btn:disabled{opacity:.6;cursor:not-allowed}
-      .select{appearance:none;border:1px solid var(--border);background:#fff;padding:8px 12px;border-radius:10px;min-width:180px}
-      .spacer{flex:1}
-      .menu{position:relative}
-      .kebab{border:1px solid var(--border);background:#fff;border-radius:10px;padding:8px 12px;cursor:pointer}
-      .dropdown{position:absolute;right:0;top:110%;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.06);padding:8px;min-width:220px;display:none}
-      .dropdown.open{display:block}
-      .item{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-radius:8px;cursor:pointer}
-      .item:hover{background:var(--chip)}
-      .switch{width:34px;height:20px;border-radius:999px;background:#ddd;position:relative;transition:.2s}
-      .switch::after{content:"";width:16px;height:16px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
-      .switch.on{background:#111}
-      .switch.on::after{left:16px}
+      html,body{background:#fff;color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,Inter,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+      .wrap{max-width:975px; margin:0 auto; padding:16px}
 
-      /* Bio */
-      .bio{display:none;gap:14px;align-items:center;padding:18px 0;border-bottom:1px solid var(--border)}
-      .bio.show{display:flex}
-      .avatar{width:56px;height:56px;border-radius:50%;object-fit:cover;background:#eee}
-      .bio h3{font-size:16px;margin-bottom:4px}
-      .bio p{color:var(--muted);font-size:14px}
-      .bio a{color:#2563eb;text-decoration:none}
+      /* ——— Top bar ——— */
+      .top{
+        display:flex;
+        align-items:center;
+        gap:12px;
+      }
+      .grid-icon{
+        width:28px;height:28px;display:inline-grid;grid-template-columns:repeat(3,1fr);
+        gap:3px; cursor:default;
+      }
+      .grid-icon span{background:var(--ink); width:100%; height:100%;}
+      .controls{display:flex; gap:12px; margin-left:auto; align-items:center}
+      .btn{
+        padding:10px 14px; border:1px solid var(--line); background:#fff; border-radius:12px; cursor:pointer;
+      }
+      .btn:active{transform:translateY(1px)}
+      .select{position:relative}
+      .select-btn{padding:10px 14px; border:1px solid var(--line); background:#fff; border-radius:12px; cursor:pointer; min-width:170px; text-align:left}
+      .menu{
+        position:absolute; top:42px; left:0; z-index:20; background:#fff; border:1px solid var(--line); border-radius:12px; box-shadow:0 8px 30px rgba(0,0,0,.08); min-width:220px; display:none;
+      }
+      .menu.open{display:block}
+      .menu .item{display:flex; align-items:center; gap:10px; padding:10px 12px; cursor:pointer}
+      .menu .item:hover{background:var(--ghost)}
+      .menu .note{font-size:12px; color:var(--muted); padding:10px 12px; border-top:1px solid var(--line)}
+      .kebab{position:relative}
+      .kebab-btn{width:40px; height:40px; border:1px solid var(--line); background:#fff; border-radius:12px; font-size:20px; line-height:1; cursor:pointer}
 
-      /* Highlights (pinned) */
-      .highlights{display:none;gap:6px;padding:12px 0;border-bottom:1px solid var(--border)}
-      .highlights.show{display:flex;flex-wrap:wrap}
-      .hl{width:96px;aspect-ratio:1/1;overflow:hidden;background:#eee}
-      .hl img{width:100%;height:100%;object-fit:cover;display:block}
+      /* Línea divisoria entre controles y grid */
+      .rule{height:1px; background:var(--line); margin:14px 0 16px}
 
-      /* Grid IG */
-      .grid{display:grid;gap:8px;padding:16px 0}
-      @media (min-width:720px){ .grid{grid-template-columns:repeat(3,1fr)} }
-      @media (max-width:719px){ .grid{grid-template-columns:repeat(2,1fr)} }
-      .tile{position:relative;aspect-ratio:4/5;overflow:hidden;background:#eee}
-      .tile img{width:100%;height:100%;object-fit:cover;display:block}
-      .overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.55),transparent 60%);opacity:0;transition:.2s}
-      .meta{position:absolute;left:8px;right:8px;bottom:8px;color:#fff;font-weight:600;text-shadow:0 1px 2px rgba(0,0,0,.4)}
-      .title{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-      .date{font-size:12px;opacity:.9}
-      .tile:hover .overlay{opacity:1}
+      /* ——— Bio / Highlights (toggle en menú) ——— */
+      .bio{display:none; margin:4px 0 14px}
+      .bio.show{display:block}
+      .bio .username{font-weight:700; font-size:28px; margin-bottom:10px}
+      .bio .text{color:var(--ink); white-space:pre-line; line-height:1.5; margin-bottom:8px}
+      .bio a{color:#2563eb; text-decoration:none}
+      .highlights{display:flex; gap:10px; margin-top:12px}
+      .hl{width:66px; height:66px; border:1px solid var(--line); border-radius:50%; background:#fafafa}
 
-      .error{margin:16px 0;padding:16px;border:1px solid #fecaca;background:#fee2e2;color:#991b1b;border-radius:12px}
-      .empty{color:var(--muted);text-align:center;padding:40px 8px}
-      .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
-      .chip{background:var(--chip);color:var(--chip-text);padding:6px 10px;border-radius:999px;font-size:12px}
-      .footer{color:var(--muted);text-align:center;padding:30px 0 10px}
+      /* ——— Grid 3 columnas SIEMPRE (web y móvil) ——— */
+      .grid{
+        display:grid; grid-template-columns:repeat(3, 1fr); gap:12px;
+      }
+      .tile{
+        position:relative;
+        width:100%;
+        aspect-ratio:4/5;          /* 1080x1350 */
+        background:#eee;
+        overflow:hidden;           /* sin bordes, sin radios — IG */
+      }
+      .tile img, .tile video{
+        width:100%; height:100%; object-fit:cover; display:block;
+      }
+
+      /* overlay meta (aparece al pasar) */
+      .meta{
+        position:absolute; left:0; right:0; bottom:0;
+        padding:10px 10px 8px;
+        color:#fff; font-size:12px; line-height:1.2;
+        background:linear-gradient(to top, rgba(0,0,0,.55), rgba(0,0,0,0));
+        opacity:0; transition:opacity .2s ease;
+        display:flex; justify-content:space-between; align-items:flex-end;
+      }
+      .tile:hover .meta{opacity:1}
+
+      /* Pin estilo IG */
+      .pin{
+        position:absolute; top:8px; right:8px; width:22px; height:22px;
+        border-radius:50%; background:rgba(17,17,17,.85); color:#fff;
+        display:grid; place-items:center; font-size:13px; box-shadow:0 2px 6px rgba(0,0,0,.25);
+      }
+
+      /* chips que aparecen en algunos posts (opcional) */
+      .chips{position:absolute; bottom:52px; left:8px; display:flex; gap:6px}
+      .chip{
+        font-size:11px; padding:4px 6px; background:rgba(17,17,17,.72); color:#fff; border-radius:6px
+      }
+
+      /* utilidades */
+      .hidden{display:none}
     </style>
   </head>
   <body>
     <div class="wrap">
-      <div class="toolbar">
-        <button id="refreshBtn" class="btn">Refresh</button>
-        <select id="platformSel" class="select"><option value="">All Platforms</option></select>
-        <select id="statusSel" class="select"><option value="">All Status</option></select>
-        <div class="spacer"></div>
-        <div class="menu">
-          <button id="kebab" class="kebab">…</button>
-          <div id="dd" class="dropdown">
-            <div id="toggleBio" class="item">
-              <span>Show Bio</span> <span id="swBio" class="switch"></span>
-            </div>
-            <div id="toggleHL" class="item">
-              <span>Show Highlights</span> <span id="swHL" class="switch"></span>
+      <!-- Top bar -->
+      <div class="top">
+        <div class="grid-icon" aria-hidden="true" title="Grid">
+          <span></span><span></span><span></span>
+          <span></span><span></span><span></span>
+          <span></span><span></span><span></span>
+        </div>
+
+        <div class="controls">
+          <button id="refreshBtn" class="btn">Refresh</button>
+
+          <div class="select" id="platformSelect">
+            <button class="select-btn" id="platformBtn">All Platforms ▾</button>
+            <div class="menu" id="platformMenu"></div>
+          </div>
+
+          <div class="select" id="statusSelect">
+            <button class="select-btn" id="statusBtn">All Status ▾</button>
+            <div class="menu" id="statusMenu"></div>
+          </div>
+
+          <div class="kebab">
+            <button class="kebab-btn" id="moreBtn">⋯</button>
+            <div class="menu" id="moreMenu" style="right:0; left:auto;">
+              <label class="item"><input type="checkbox" id="showBio" />&nbsp; Show Bio</label>
+              <label class="item"><input type="checkbox" id="showHighlights" />&nbsp; Show Highlights</label>
+              <div class="note">
+                Want to customize your bio or highlights? Go to your Account page, find your widget, click Edit.
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div id="bio" class="bio">
-        <img id="bioAvatar" class="avatar" alt="">
-        <div>
-          <h3 id="bioName"></h3>
-          <p id="bioText"></p>
-          <div class="chips" id="bioChips"></div>
+      <div class="rule"></div>
+
+      <!-- Bio (se muestra con el toggle) -->
+      <section id="bio" class="bio">
+        <div class="username">@your_username</div>
+        <div class="text">
+Your Display Name
+Helping creators turn skills into income ✨
+🧱 Serving clients globally
+🧠 Tips to build income streams
+👇 Start your journey here
         </div>
-      </div>
+        <a href="#" target="_blank" rel="noopener">websitelink.com</a>
 
-      <div id="highlights" class="highlights"></div>
+        <div id="highlights" class="highlights hidden" aria-hidden="true">
+          <div class="hl"></div><div class="hl"></div><div class="hl"></div><div class="hl"></div>
+        </div>
+      </section>
 
-      <div id="error" class="error" style="display:none"></div>
+      <!-- Estado / errores -->
+      <div id="state" class="hidden" style="margin:12px 0; padding:12px; background:#fee2e2; color:#991b1b; border:1px solid #fecaca; border-radius:10px;"></div>
 
-      <div id="grid" class="grid"></div>
-
-      <div class="footer">Powered by Notion + Vercel</div>
+      <!-- Grid -->
+      <div id="grid" class="grid" aria-live="polite"></div>
     </div>
 
     <script>
-      const ls = window.localStorage;
-      const state = { items: [], filtered: [], sets: { platform: new Set(), status: new Set() }, showBio:false, showHL:false, health:null };
+      const stateEl = document.getElementById("state");
+      const gridEl  = document.getElementById("grid");
 
-      // UI refs
-      const gridEl = document.getElementById('grid');
-      const errorEl = document.getElementById('error');
-      const platformSel = document.getElementById('platformSel');
-      const statusSel = document.getElementById('statusSel');
-      const refreshBtn = document.getElementById('refreshBtn');
-      const dd = document.getElementById('dd');
-      const kebab = document.getElementById('kebab');
-      const toggleBio = document.getElementById('toggleBio');
-      const toggleHL = document.getElementById('toggleHL');
-      const swBio = document.getElementById('swBio');
-      const swHL = document.getElementById('swHL');
-      const bioEl = document.getElementById('bio');
-      const bioName = document.getElementById('bioName');
-      const bioText = document.getElementById('bioText');
-      const bioAvatar = document.getElementById('bioAvatar');
-      const bioChips = document.getElementById('bioChips');
-      const highlightsEl = document.getElementById('highlights');
+      const platformBtn = document.getElementById("platformBtn");
+      const statusBtn   = document.getElementById("statusBtn");
+      const platformMenu= document.getElementById("platformMenu");
+      const statusMenu  = document.getElementById("statusMenu");
 
-      function setErr(msg){ errorEl.textContent = msg; errorEl.style.display = msg ? 'block' : 'none'; }
-      function kebabOpen(open){ dd.classList.toggle('open', open); }
+      const moreBtn     = document.getElementById("moreBtn");
+      const moreMenu    = document.getElementById("moreMenu");
+      const refreshBtn  = document.getElementById("refreshBtn");
 
-      function applyToggles(){
-        swBio.classList.toggle('on', state.showBio);
-        swHL.classList.toggle('on', state.showHL);
-        bioEl.classList.toggle('show', !!(state.showBio && state.health && (state.health.bioName || state.health.bioText)));
-        highlightsEl.classList.toggle('show', !!(state.showHL && highlightsEl.childElementCount>0));
+      const bioBox      = document.getElementById("bio");
+      const showBioCb   = document.getElementById("showBio");
+      const showHlCb    = document.getElementById("showHighlights");
+      const hlBox       = document.getElementById("highlights");
+
+      let ALL_ITEMS = [];
+      let currentPlatform = "All Platforms";
+      let currentStatus   = "All Status";
+
+      function fmtDate(iso){
+        if(!iso) return "";
+        const d = new Date(iso);
+        const dd = String(d.getDate()).padStart(2,"0");
+        const mm = String(d.getMonth()+1).padStart(2,"0");
+        const yy = d.getFullYear();
+        return `${dd}/${mm}/${yy}`;
       }
 
-      function setSelectOptions(){
-        platformSel.innerHTML = '<option value="">All Platforms</option>' + [...state.sets.platform].sort().map(v=>`<option>${v}</option>`).join('');
-        statusSel.innerHTML = '<option value="">All Status</option>' + [...state.sets.status].sort().map(v=>`<option>${v}</option>`).join('');
+      function closeAllMenus(){
+        document.querySelectorAll(".menu").forEach(m => m.classList.remove("open"));
+      }
+
+      document.addEventListener("click", (e)=>{
+        if(!e.target.closest(".select") && !e.target.closest(".kebab")) closeAllMenus();
+      });
+
+      platformBtn.addEventListener("click", (e)=>{
+        e.stopPropagation();
+        closeAllMenus();
+        platformMenu.classList.toggle("open");
+      });
+      statusBtn.addEventListener("click", (e)=>{
+        e.stopPropagation();
+        closeAllMenus();
+        statusMenu.classList.toggle("open");
+      });
+      moreBtn.addEventListener("click", (e)=>{
+        e.stopPropagation();
+        closeAllMenus();
+        moreMenu.classList.toggle("open");
+      });
+
+      refreshBtn.addEventListener("click", loadGrid);
+
+      showBioCb.addEventListener("change",()=>{
+        bioBox.classList.toggle("show", showBioCb.checked);
+      });
+      showHlCb.addEventListener("change",()=>{
+        hlBox.classList.toggle("hidden", !showHlCb.checked);
+        hlBox.setAttribute("aria-hidden", (!showHlCb.checked).toString());
+      });
+
+      function buildMenus(items){
+        // Plataformas y estados únicos desde Notion
+        const pset = new Set(); const sset = new Set();
+        items.forEach(it=>{
+          (it.platforms||[]).forEach(p=>pset.add(p));
+          if(it.status) sset.add(it.status);
+        });
+
+        // Platform menu
+        const pArr = ["All Platforms", ...Array.from(pset)];
+        platformMenu.innerHTML = pArr.map(p=>`<div class="item" data-v="${p}">${p}</div>`).join("");
+        platformMenu.querySelectorAll(".item").forEach(it=>{
+          it.addEventListener("click", ()=>{
+            currentPlatform = it.dataset.v;
+            platformBtn.textContent = `${currentPlatform} ▾`;
+            platformMenu.classList.remove("open");
+            render();
+          });
+        });
+
+        // Status menu
+        const sArr = ["All Status", ...Array.from(sset)];
+        statusMenu.innerHTML = sArr.map(s=>`<div class="item" data-v="${s}">${s}</div>`).join("");
+        statusMenu.querySelectorAll(".item").forEach(it=>{
+          it.addEventListener("click", ()=>{
+            currentStatus = it.dataset.v;
+            statusBtn.textContent = `${currentStatus} ▾`;
+            statusMenu.classList.remove("open");
+            render();
+          });
+        });
       }
 
       function render(){
-        const p = platformSel.value;
-        const s = statusSel.value;
-        state.filtered = state.items.filter(it => (!p || it.platform===p) && (!s || it.status===s));
-        if (state.filtered.length === 0){
-          gridEl.innerHTML = '<div class="empty">Sin resultados</div>';
+        const items = ALL_ITEMS.filter(it=>{
+          const passPlatform = (currentPlatform==="All Platforms") ||
+                               (it.platforms||[]).includes(currentPlatform);
+          const passStatus   = (currentStatus==="All Status") ||
+                               (it.status === currentStatus);
+          return passPlatform && passStatus;
+        });
+
+        if(items.length===0){
+          gridEl.innerHTML = "";
           return;
         }
-        gridEl.innerHTML = state.filtered.map(it=>{
-          const title = (it.title || 'Sin título').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-          const date = it.date ? new Date(it.date).toLocaleDateString() : '';
-          const img = it.image ? `<img src="${it.image}" alt="${title}" loading="lazy">` : '';
-          const click = it.link ? `onclick="window.open('${it.link}','_blank')"` : '';
+
+        gridEl.innerHTML = items.map(it=>{
+          const title = (it.title||"").trim() || "Sin título";
+          const date  = fmtDate(it.date);
+          const chips = (it.tags||[]).slice(0,3);
+          const media = it.image
+            ? `<img src="${it.image}" alt="${title}" loading="lazy">`
+            : (it.video ? `<video src="${it.video}" muted playsinline preload="metadata"></video>` : `<div style="background:#ddd;width:100%;height:100%"></div>`);
+
           return `
-            <div class="tile" ${click}>
-              ${img}
-              <div class="overlay"></div>
+            <div class="tile" ${it.link ? `onclick="window.open('${it.link}','_blank')"`:""}>
+              ${media}
+              ${it.pinned ? `<div class="pin" title="Pinned">★</div>` : ``}
+              ${chips.length? `<div class="chips">${chips.map(c=>`<span class="chip">${c}</span>`).join("")}</div>`:""}
               <div class="meta">
-                <div class="title">${title}</div>
-                ${date?`<div class="date">${date}</div>`:''}
+                <div>${title}</div>
+                <div>${date}</div>
               </div>
             </div>
           `;
-        }).join('');
-      }
-
-      async function loadHealth(){
-        try{
-          const r = await fetch('/api/health');
-          if(!r.ok) throw new Error('HTTP '+r.status);
-          const h = await r.json();
-          state.health = h;
-
-          // Bio data desde env (opcional)
-          bioName.textContent = h.bioName || '';
-          bioText.textContent = h.bioText || '';
-          if (h.bioAvatar) { bioAvatar.src = h.bioAvatar; bioAvatar.alt = h.bioName || 'avatar'; }
-          else bioAvatar.style.display = 'none';
-          bioChips.innerHTML = '';
-          if (h.bioUrl) bioChips.innerHTML += `<a class="chip" href="${h.bioUrl}" target="_blank" rel="noopener noreferrer">Link</a>`;
-
-          applyToggles();
-        }catch(e){
-          // no es crítico para renderizar el grid
-        }
+        }).join("");
       }
 
       async function loadGrid(){
         try{
-          setErr('');
-          refreshBtn.disabled = true;
-          const r = await fetch('/api/grid');
-          if(!r.ok){
-            const t = await r.text().catch(()=> '');
-            throw new Error('HTTP '+r.status+(t?` - ${t}`:''));
+          stateEl.classList.add("hidden");
+          stateEl.textContent = "";
+
+          const res = await fetch("/api/grid");
+          if(!res.ok){
+            const msg = `HTTP ${res.status}`;
+            throw new Error(msg);
           }
-          const data = await r.json();
-          state.items = (data.items||[]);
+          const data = await res.json();
+          ALL_ITEMS = data.items || [];
 
-          // recopilar sets
-          state.sets.platform = new Set(state.items.filter(x=>!!x.platform).map(x=>x.platform));
-          state.sets.status = new Set(state.items.filter(x=>!!x.status).map(x=>x.status));
-          setSelectOptions();
-
-          // highlights (pinned)
-          highlightsEl.innerHTML = '';
-          (state.items.filter(x=>x.pinned).slice(0,6)).forEach(it=>{
-            const d = document.createElement('a');
-            d.className='hl';
-            if (it.link){ d.href = it.link; d.target = '_blank'; d.rel = 'noopener noreferrer'; }
-            d.innerHTML = it.image ? `<img src="${it.image}" alt="">` : '';
-            highlightsEl.appendChild(d);
-          });
-          applyToggles();
-
+          buildMenus(ALL_ITEMS);
           render();
         }catch(e){
-          setErr('❌ Error al cargar: '+e.message+'. Revisa /api/health y variables en Vercel.');
-        }finally{
-          refreshBtn.disabled = false;
+          stateEl.textContent = `❌ Error al cargar: ${e.message}. Revisa /api/health y variables en Vercel.`;
+          stateEl.classList.remove("hidden");
+          gridEl.innerHTML = "";
         }
       }
 
-      // events
-      document.addEventListener('click', (ev)=>{
-        if (!dd.contains(ev.target) && ev.target!==kebab) kebabOpen(false);
-      });
-      kebab.addEventListener('click', ()=> kebabOpen(!dd.classList.contains('open')));
-      refreshBtn.addEventListener('click', ()=> loadGrid());
-      platformSel.addEventListener('change', render);
-      statusSel.addEventListener('change', render);
-
-      // toggles
-      state.showBio = ls.getItem('showBio') === '1';
-      state.showHL = ls.getItem('showHL') === '1';
-      applyToggles();
-
-      toggleBio.addEventListener('click', ()=>{
-        state.showBio = !state.showBio; ls.setItem('showBio', state.showBio?'1':'0'); applyToggles();
-      });
-      toggleHL.addEventListener('click', ()=>{
-        state.showHL = !state.showHL; ls.setItem('showHL', state.showHL?'1':'0'); applyToggles();
-      });
-
-      // start
-      (async function init(){
-        await loadHealth();
-        await loadGrid();
-      })();
+      // Arranque
+      loadGrid();
     </script>
   </body>
 </html>
