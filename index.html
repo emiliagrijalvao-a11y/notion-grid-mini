@@ -1,193 +1,182 @@
 <!doctype html>
 <html lang="es">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Notion Grid Widget</title>
-    <style>
-      :root {
-        --gap: 16px;         /* separación entre tarjetas */
-        --radius: 12px;      /* borde redondeado de tarjetas */
-        --bg: #0b0b0c;
-        --panel: #1a1a1f;
-        --text: #f3f3f3;
-        --muted: #a0a0aa;
-        --border: #2a2a32;
-        --accent: #8ab4ff;
-        --pad: 32px;         /* padding lateral */
-        --title: 32px;       /* tamaño del título */
-      }
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Grid</title>
+  <style>
+    /* ——— Reset & base ——— */
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{background:#fff;color:#111;font:14px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+    img{display:block;max-width:100%}
 
-      * { box-sizing: border-box; margin: 0; padding: 0; }
+    /* ——— Layout ——— */
+    .wrap{max-width:1100px;margin:18px auto;padding:0 16px}
+    .toolbar{
+      display:flex;align-items:center;gap:10px;margin-bottom:12px;
+      position:sticky;top:0;background:#fff;z-index:10;padding:8px 0;
+    }
+    .btn{
+      border:0;background:#111;color:#fff;padding:10px 14px;border-radius:8px;
+      font-weight:600;cursor:pointer
+    }
+    .filters{display:flex;gap:8px;margin-left:6px}
+    .select{
+      appearance:none;border:1px solid #ddd;background:#fff;padding:10px 12px;border-radius:8px;
+      min-width:150px;cursor:pointer
+    }
+    .grid{
+      display:grid;gap:8px;
+      grid-template-columns:repeat(3,1fr);
+    }
+    @media (max-width:900px){ .grid{grid-template-columns:repeat(2,1fr);} }
+    @media (max-width:600px){ .grid{grid-template-columns:1fr;} }
 
-      html, body {
-        background: var(--bg);
-        color: var(--text);
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
-        line-height: 1.5;
-      }
+    /* ——— Card IG ——— */
+    .card{
+      position:relative;overflow:hidden;background:#f2f2f2;
+      /* IG: 4:5, sin bordes y sin radio */
+      aspect-ratio:4/5;border:none;border-radius:0;
+      cursor:pointer;
+    }
+    .thumb{width:100%;height:100%;object-fit:cover}
 
-      .wrap {
-        max-width: 1200px;
-        margin: 0 auto;
-        padding: var(--pad) 20px;
-      }
+    /* ——— Overlay inferior (estilo IG) ——— */
+    .meta{
+      position:absolute;left:0;right:0;bottom:0;padding:10px 12px;color:#fff;
+      background:linear-gradient(180deg,transparent 0%,rgba(0,0,0,.35) 40%,rgba(0,0,0,.65) 100%);
+      display:flex;align-items:center;justify-content:space-between;gap:10px;
+    }
+    .title{font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:82%}
+    .date{font-size:13px;opacity:.85;white-space:nowrap}
 
-      .header { text-align: center; margin-bottom: 28px; }
-      h1 {
-        font-size: var(--title);
-        font-weight: 700;
-        margin-bottom: 8px;
-        background: linear-gradient(135deg,#667eea 0%,#764ba2 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-      }
-      .subtitle { color: var(--muted); font-size: 16px; }
+    /* estado vacío / error */
+    .state{color:#777;text-align:center;padding:40px 8px}
+    .error{color:#b00020;background:#ffe9ec;border:1px solid #ffc2c9;border-radius:8px}
 
-      .state { color: var(--muted); font-size: 14px; text-align: center; padding: 12px; margin: 16px 0 8px; }
-      .state.loading { animation: pulse 1.6s ease-in-out infinite; }
-      .state.error {
-        color:#ffb3b3; background: rgba(255,179,179,.1); border: 1px solid rgba(255,179,179,.3);
-        border-radius: 8px;
-      }
-      @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
-
-      .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--gap); }
-      @media (max-width: 900px){ .grid{ grid-template-columns: repeat(2,1fr);} }
-      @media (max-width: 600px){ .grid{ grid-template-columns: 1fr;} .wrap{ padding: 20px 16px;} h1{ font-size:24px;} }
-
-      .card {
-        background: var(--panel);
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
-        overflow: hidden;
-        transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease;
-        cursor: pointer;
-      }
-      .card:hover { transform: translateY(-4px); box-shadow: 0 10px 24px rgba(0,0,0,.35); border-color: var(--accent); }
-
-      .thumb { width: 100%; height: 280px; object-fit: cover; display: block; background: linear-gradient(135deg,#2a2a32 0%,#1a1a1f 100%); }
-      .thumb.placeholder{ display:flex; align-items:center; justify-content:center; font-size:48px; color: var(--muted); }
-
-      .info { padding: 14px 16px; }
-      .card-title { font-size: 15px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-      .link { color: var(--accent); text-decoration: none; font-size: 13px; display:inline-block; margin-top:6px; }
-      .link:hover { opacity: .75; }
-
-      .footer { text-align:center; margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--border); color: var(--muted); font-size: 13px; }
-      .footer a { color: var(--accent); text-decoration: none; }
-      .footer a:hover { text-decoration: underline; }
-
-      .empty-state { text-align:center; padding: 60px 20px; grid-column: 1 / -1; }
-      .empty-state-icon { font-size: 64px; margin-bottom: 16px; opacity: .5; }
-      .empty-state-text { color: var(--muted); font-size: 18px; }
-    </style>
-  </head>
-
-  <body>
-    <div class="wrap" id="wrap">
-      <div class="header" id="header">
-        <h1>📸 Notion Grid Widget</h1>
-        <p class="subtitle">Tu contenido de Notion en un grid hermoso</p>
-      </div>
-
-      <div id="state" class="state loading">Cargando posts...</div>
-      <div id="grid" class="grid"></div>
-
-      <div class="footer" id="footer">
-        Powered by <a href="https://notion.so" target="_blank" rel="noreferrer">Notion</a> +
-        <a href="https://vercel.com" target="_blank" rel="noreferrer">Vercel</a>
+    /* opcional: hover para escritorio */
+    @media (hover:hover){
+      .meta{opacity:0;transition:opacity .2s ease}
+      .card:hover .meta{opacity:1}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="toolbar">
+      <button id="btnRefresh" class="btn">Refresh</button>
+      <div class="filters">
+        <select id="filterPlatform" class="select"></select>
+        <select id="filterStatus" class="select"></select>
       </div>
     </div>
 
-    <script>
-      // Lee parámetros de la URL para personalizar sin tocar código:
-      // ?cols=3&gap=12&radius=16&embed=1
-      (function applyUrlOptions() {
-        const qs = new URLSearchParams(location.search);
-        const cols   = parseInt(qs.get("cols") || "3", 10);
-        const gap    = parseInt(qs.get("gap")  || "16", 10);
-        const radius = parseInt(qs.get("radius") || "12", 10);
-        const embed  = qs.get("embed") === "1";
+    <div id="state" class="state">Cargando posts…</div>
+    <div id="grid" class="grid" hidden></div>
+  </div>
 
-        const root = document.documentElement;
-        root.style.setProperty("--gap",    `${Math.max(0, gap)}px`);
-        root.style.setProperty("--radius", `${Math.max(0, radius)}px`);
+  <script>
+    let ALL_ITEMS = [];
+    let currentFilters = { platform: 'All', status: 'All' };
 
-        const grid = document.getElementById("grid");
-        grid.style.gridTemplateColumns = `repeat(${Math.max(1, cols)}, 1fr)`;
+    function esc(s){ return (s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+    function fmtDate(iso){
+      try{
+        const d = new Date(iso||Date.now());
+        return d.toLocaleString('en-US',{month:'short',day:'numeric'}); // “Feb 25”
+      }catch{return '';}
+    }
 
-        if (embed) {
-          root.style.setProperty("--pad", "8px");
-          root.style.setProperty("--title", "20px");
-          document.getElementById("header").style.display = "none";
-          document.getElementById("footer").style.display = "none";
-        }
-      })();
+    function uniqueValues(items, key){
+      const set = new Set();
+      items.forEach(i => { if(i[key]) set.add(i[key]); });
+      return Array.from(set).sort();
+    }
 
-      function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+    function buildFilters(items){
+      const selPlatform = document.getElementById('filterPlatform');
+      const selStatus = document.getElementById('filterStatus');
 
-      async function loadGrid() {
-        const stateEl = document.getElementById("state");
-        const gridEl  = document.getElementById("grid");
+      const platforms = ['All', ...uniqueValues(items,'platform')];
+      const statuses  = ['All', ...uniqueValues(items,'status')];
 
-        stateEl.className = "state loading";
-        stateEl.style.display = "block";
-        stateEl.textContent = "Cargando posts...";
+      selPlatform.innerHTML = platforms.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');
+      selStatus.innerHTML   = statuses.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');
 
-        try {
-          const res = await fetch("/api/grid", { cache: "no-store" });
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          const data = await res.json();
-          const items = Array.isArray(data.items) ? data.items : [];
+      selPlatform.value = currentFilters.platform;
+      selStatus.value   = currentFilters.status;
 
-          stateEl.style.display = "none";
+      selPlatform.onchange = () => { currentFilters.platform = selPlatform.value; render(); };
+      selStatus.onchange   = () => { currentFilters.status   = selStatus.value; render(); };
+    }
 
-          if (items.length === 0) {
-            gridEl.innerHTML = `
-              <div class="empty-state">
-                <div class="empty-state-icon">📭</div>
-                <div class="empty-state-text">No hay posts todavía</div>
-              </div>`;
-            return;
-          }
+    function applyFilters(items){
+      return items.filter(i =>
+        (currentFilters.platform==='All' || i.platform===currentFilters.platform) &&
+        (currentFilters.status==='All'   || i.status===currentFilters.status)
+      );
+    }
 
-          gridEl.innerHTML = items.map(item => {
-            const title = esc(item.title || "Sin título");
-            const img   = item.image
-              ? `<img class="thumb" src="${item.image}" alt="${title}" loading="lazy">`
-              : `<div class="thumb placeholder">🖼️</div>`;
-            const link  = item.link
-              ? `<a class="link" href="${item.link}" target="_blank" rel="noopener noreferrer">Abrir enlace →</a>`
-              : "";
+    function render(){
+      const grid = document.getElementById('grid');
+      const state = document.getElementById('state');
 
-            const onclick = item.link ? `onclick="window.open('${item.link}','_blank')"` : "";
-            return `
-              <div class="card" ${onclick}>
-                ${img}
-                <div class="info">
-                  <div class="card-title">${title}</div>
-                  ${link}
-                </div>
-              </div>`;
-          }).join("");
-        } catch (e) {
-          console.error(e);
-          stateEl.className = "state error";
-          stateEl.textContent = `❌ Error al cargar: ${e.message}. Verifica /api/health y las variables de entorno.`;
-          stateEl.style.display = "block";
-        }
+      const items = applyFilters(ALL_ITEMS);
+      if(!items.length){
+        grid.hidden = true;
+        state.className = 'state';
+        state.textContent = 'No hay elementos con esos filtros.';
+        return;
       }
 
-      // Llamadas correctas (¡dentro del <script>!):
-      loadGrid();
-      // refresca cada 5 min
-      setInterval(loadGrid, 5 * 60 * 1000);
-      // si vuelves a la pestaña, refresca
-      document.addEventListener("visibilitychange", () => {
-        if (!document.hidden) loadGrid();
-      });
-    </script>
-  </body>
+      grid.hidden = false;
+      state.textContent = '';
+      state.className = 'state';
+
+      grid.innerHTML = items.map(item=>{
+        const title = esc(item.title || ''); // IG no muestra título en la grilla, solo al pasar
+        const date  = esc(fmtDate(item.date));
+        const img   = esc(item.image || '');
+        const link  = item.link ? `onclick="window.open('${esc(item.link)}','_blank')"` : '';
+
+        return `
+          <div class="card" ${link}>
+            ${img ? `<img class="thumb" src="${img}" alt="${title}">` : ''}
+            <div class="meta">
+              <div class="title">${title}</div>
+              <div class="date">${date}</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function load(){
+      const state = document.getElementById('state');
+      const grid  = document.getElementById('grid');
+
+      try{
+        state.className = 'state';
+        state.textContent = 'Cargando posts…';
+        grid.hidden = true;
+
+        const res = await fetch('/api/grid');
+        if(!res.ok) throw new Error('HTTP '+res.status);
+        const data = await res.json();
+
+        ALL_ITEMS = data.items || [];
+        buildFilters(ALL_ITEMS);
+        render();
+      }catch(e){
+        state.className = 'state error';
+        state.textContent = '❌ Error al cargar: '+ e.message + '. Revisa /api/health y variables en Vercel.';
+      }
+    }
+
+    document.getElementById('btnRefresh').onclick = load;
+
+    load();
+    setInterval(load, 5*60*1000);
+  </script>
+</body>
 </html>
