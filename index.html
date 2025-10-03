@@ -1,182 +1,256 @@
 <!doctype html>
 <html lang="es">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Grid</title>
-  <style>
-    /* ——— Reset & base ——— */
-    *{box-sizing:border-box;margin:0;padding:0}
-    html,body{background:#fff;color:#111;font:14px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
-    img{display:block;max-width:100%}
-
-    /* ——— Layout ——— */
-    .wrap{max-width:1100px;margin:18px auto;padding:0 16px}
-    .toolbar{
-      display:flex;align-items:center;gap:10px;margin-bottom:12px;
-      position:sticky;top:0;background:#fff;z-index:10;padding:8px 0;
-    }
-    .btn{
-      border:0;background:#111;color:#fff;padding:10px 14px;border-radius:8px;
-      font-weight:600;cursor:pointer
-    }
-    .filters{display:flex;gap:8px;margin-left:6px}
-    .select{
-      appearance:none;border:1px solid #ddd;background:#fff;padding:10px 12px;border-radius:8px;
-      min-width:150px;cursor:pointer
-    }
-    .grid{
-      display:grid;gap:8px;
-      grid-template-columns:repeat(3,1fr);
-    }
-    @media (max-width:900px){ .grid{grid-template-columns:repeat(2,1fr);} }
-    @media (max-width:600px){ .grid{grid-template-columns:1fr;} }
-
-    /* ——— Card IG ——— */
-    .card{
-      position:relative;overflow:hidden;background:#f2f2f2;
-      /* IG: 4:5, sin bordes y sin radio */
-      aspect-ratio:4/5;border:none;border-radius:0;
-      cursor:pointer;
-    }
-    .thumb{width:100%;height:100%;object-fit:cover}
-
-    /* ——— Overlay inferior (estilo IG) ——— */
-    .meta{
-      position:absolute;left:0;right:0;bottom:0;padding:10px 12px;color:#fff;
-      background:linear-gradient(180deg,transparent 0%,rgba(0,0,0,.35) 40%,rgba(0,0,0,.65) 100%);
-      display:flex;align-items:center;justify-content:space-between;gap:10px;
-    }
-    .title{font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:82%}
-    .date{font-size:13px;opacity:.85;white-space:nowrap}
-
-    /* estado vacío / error */
-    .state{color:#777;text-align:center;padding:40px 8px}
-    .error{color:#b00020;background:#ffe9ec;border:1px solid #ffc2c9;border-radius:8px}
-
-    /* opcional: hover para escritorio */
-    @media (hover:hover){
-      .meta{opacity:0;transition:opacity .2s ease}
-      .card:hover .meta{opacity:1}
-    }
-  </style>
-</head>
-<body>
-  <div class="wrap">
-    <div class="toolbar">
-      <button id="btnRefresh" class="btn">Refresh</button>
-      <div class="filters">
-        <select id="filterPlatform" class="select"></select>
-        <select id="filterStatus" class="select"></select>
-      </div>
-    </div>
-
-    <div id="state" class="state">Cargando posts…</div>
-    <div id="grid" class="grid" hidden></div>
-  </div>
-
-  <script>
-    let ALL_ITEMS = [];
-    let currentFilters = { platform: 'All', status: 'All' };
-
-    function esc(s){ return (s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
-    function fmtDate(iso){
-      try{
-        const d = new Date(iso||Date.now());
-        return d.toLocaleString('en-US',{month:'short',day:'numeric'}); // “Feb 25”
-      }catch{return '';}
-    }
-
-    function uniqueValues(items, key){
-      const set = new Set();
-      items.forEach(i => { if(i[key]) set.add(i[key]); });
-      return Array.from(set).sort();
-    }
-
-    function buildFilters(items){
-      const selPlatform = document.getElementById('filterPlatform');
-      const selStatus = document.getElementById('filterStatus');
-
-      const platforms = ['All', ...uniqueValues(items,'platform')];
-      const statuses  = ['All', ...uniqueValues(items,'status')];
-
-      selPlatform.innerHTML = platforms.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');
-      selStatus.innerHTML   = statuses.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');
-
-      selPlatform.value = currentFilters.platform;
-      selStatus.value   = currentFilters.status;
-
-      selPlatform.onchange = () => { currentFilters.platform = selPlatform.value; render(); };
-      selStatus.onchange   = () => { currentFilters.status   = selStatus.value; render(); };
-    }
-
-    function applyFilters(items){
-      return items.filter(i =>
-        (currentFilters.platform==='All' || i.platform===currentFilters.platform) &&
-        (currentFilters.status==='All'   || i.status===currentFilters.status)
-      );
-    }
-
-    function render(){
-      const grid = document.getElementById('grid');
-      const state = document.getElementById('state');
-
-      const items = applyFilters(ALL_ITEMS);
-      if(!items.length){
-        grid.hidden = true;
-        state.className = 'state';
-        state.textContent = 'No hay elementos con esos filtros.';
-        return;
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Notion Grid Widget</title>
+    <style>
+      :root{
+        --bg:#ffffff;
+        --text:#111;
+        --muted:#6b7280;
+        --error:#ef4444;
+        --border:#e5e7eb;
+        --chip:#f3f4f6;
+        --chip-text:#111;
       }
+      *{box-sizing:border-box;margin:0;padding:0}
+      html,body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,system-ui,sans-serif;line-height:1.45}
+      .wrap{max-width:1120px;margin:0 auto;padding:16px}
+      .toolbar{display:flex;gap:12px;align-items:center;position:sticky;top:0;background:var(--bg);padding:8px 0 12px;border-bottom:1px solid var(--border);z-index:10}
+      .btn{appearance:none;border:1px solid var(--border);background:#111;color:#fff;padding:8px 14px;font-weight:600;border-radius:10px;cursor:pointer}
+      .btn:disabled{opacity:.6;cursor:not-allowed}
+      .select{appearance:none;border:1px solid var(--border);background:#fff;padding:8px 12px;border-radius:10px;min-width:180px}
+      .spacer{flex:1}
+      .menu{position:relative}
+      .kebab{border:1px solid var(--border);background:#fff;border-radius:10px;padding:8px 12px;cursor:pointer}
+      .dropdown{position:absolute;right:0;top:110%;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.06);padding:8px;min-width:220px;display:none}
+      .dropdown.open{display:block}
+      .item{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-radius:8px;cursor:pointer}
+      .item:hover{background:var(--chip)}
+      .switch{width:34px;height:20px;border-radius:999px;background:#ddd;position:relative;transition:.2s}
+      .switch::after{content:"";width:16px;height:16px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+      .switch.on{background:#111}
+      .switch.on::after{left:16px}
 
-      grid.hidden = false;
-      state.textContent = '';
-      state.className = 'state';
+      /* Bio */
+      .bio{display:none;gap:14px;align-items:center;padding:18px 0;border-bottom:1px solid var(--border)}
+      .bio.show{display:flex}
+      .avatar{width:56px;height:56px;border-radius:50%;object-fit:cover;background:#eee}
+      .bio h3{font-size:16px;margin-bottom:4px}
+      .bio p{color:var(--muted);font-size:14px}
+      .bio a{color:#2563eb;text-decoration:none}
 
-      grid.innerHTML = items.map(item=>{
-        const title = esc(item.title || ''); // IG no muestra título en la grilla, solo al pasar
-        const date  = esc(fmtDate(item.date));
-        const img   = esc(item.image || '');
-        const link  = item.link ? `onclick="window.open('${esc(item.link)}','_blank')"` : '';
+      /* Highlights (pinned) */
+      .highlights{display:none;gap:6px;padding:12px 0;border-bottom:1px solid var(--border)}
+      .highlights.show{display:flex;flex-wrap:wrap}
+      .hl{width:96px;aspect-ratio:1/1;overflow:hidden;background:#eee}
+      .hl img{width:100%;height:100%;object-fit:cover;display:block}
 
-        return `
-          <div class="card" ${link}>
-            ${img ? `<img class="thumb" src="${img}" alt="${title}">` : ''}
-            <div class="meta">
-              <div class="title">${title}</div>
-              <div class="date">${date}</div>
+      /* Grid IG */
+      .grid{display:grid;gap:8px;padding:16px 0}
+      @media (min-width:720px){ .grid{grid-template-columns:repeat(3,1fr)} }
+      @media (max-width:719px){ .grid{grid-template-columns:repeat(2,1fr)} }
+      .tile{position:relative;aspect-ratio:4/5;overflow:hidden;background:#eee}
+      .tile img{width:100%;height:100%;object-fit:cover;display:block}
+      .overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.55),transparent 60%);opacity:0;transition:.2s}
+      .meta{position:absolute;left:8px;right:8px;bottom:8px;color:#fff;font-weight:600;text-shadow:0 1px 2px rgba(0,0,0,.4)}
+      .title{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      .date{font-size:12px;opacity:.9}
+      .tile:hover .overlay{opacity:1}
+
+      .error{margin:16px 0;padding:16px;border:1px solid #fecaca;background:#fee2e2;color:#991b1b;border-radius:12px}
+      .empty{color:var(--muted);text-align:center;padding:40px 8px}
+      .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+      .chip{background:var(--chip);color:var(--chip-text);padding:6px 10px;border-radius:999px;font-size:12px}
+      .footer{color:var(--muted);text-align:center;padding:30px 0 10px}
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="toolbar">
+        <button id="refreshBtn" class="btn">Refresh</button>
+        <select id="platformSel" class="select"><option value="">All Platforms</option></select>
+        <select id="statusSel" class="select"><option value="">All Status</option></select>
+        <div class="spacer"></div>
+        <div class="menu">
+          <button id="kebab" class="kebab">…</button>
+          <div id="dd" class="dropdown">
+            <div id="toggleBio" class="item">
+              <span>Show Bio</span> <span id="swBio" class="switch"></span>
+            </div>
+            <div id="toggleHL" class="item">
+              <span>Show Highlights</span> <span id="swHL" class="switch"></span>
             </div>
           </div>
-        `;
-      }).join('');
-    }
+        </div>
+      </div>
 
-    async function load(){
-      const state = document.getElementById('state');
-      const grid  = document.getElementById('grid');
+      <div id="bio" class="bio">
+        <img id="bioAvatar" class="avatar" alt="">
+        <div>
+          <h3 id="bioName"></h3>
+          <p id="bioText"></p>
+          <div class="chips" id="bioChips"></div>
+        </div>
+      </div>
 
-      try{
-        state.className = 'state';
-        state.textContent = 'Cargando posts…';
-        grid.hidden = true;
+      <div id="highlights" class="highlights"></div>
 
-        const res = await fetch('/api/grid');
-        if(!res.ok) throw new Error('HTTP '+res.status);
-        const data = await res.json();
+      <div id="error" class="error" style="display:none"></div>
 
-        ALL_ITEMS = data.items || [];
-        buildFilters(ALL_ITEMS);
-        render();
-      }catch(e){
-        state.className = 'state error';
-        state.textContent = '❌ Error al cargar: '+ e.message + '. Revisa /api/health y variables en Vercel.';
+      <div id="grid" class="grid"></div>
+
+      <div class="footer">Powered by Notion + Vercel</div>
+    </div>
+
+    <script>
+      const ls = window.localStorage;
+      const state = { items: [], filtered: [], sets: { platform: new Set(), status: new Set() }, showBio:false, showHL:false, health:null };
+
+      // UI refs
+      const gridEl = document.getElementById('grid');
+      const errorEl = document.getElementById('error');
+      const platformSel = document.getElementById('platformSel');
+      const statusSel = document.getElementById('statusSel');
+      const refreshBtn = document.getElementById('refreshBtn');
+      const dd = document.getElementById('dd');
+      const kebab = document.getElementById('kebab');
+      const toggleBio = document.getElementById('toggleBio');
+      const toggleHL = document.getElementById('toggleHL');
+      const swBio = document.getElementById('swBio');
+      const swHL = document.getElementById('swHL');
+      const bioEl = document.getElementById('bio');
+      const bioName = document.getElementById('bioName');
+      const bioText = document.getElementById('bioText');
+      const bioAvatar = document.getElementById('bioAvatar');
+      const bioChips = document.getElementById('bioChips');
+      const highlightsEl = document.getElementById('highlights');
+
+      function setErr(msg){ errorEl.textContent = msg; errorEl.style.display = msg ? 'block' : 'none'; }
+      function kebabOpen(open){ dd.classList.toggle('open', open); }
+
+      function applyToggles(){
+        swBio.classList.toggle('on', state.showBio);
+        swHL.classList.toggle('on', state.showHL);
+        bioEl.classList.toggle('show', !!(state.showBio && state.health && (state.health.bioName || state.health.bioText)));
+        highlightsEl.classList.toggle('show', !!(state.showHL && highlightsEl.childElementCount>0));
       }
-    }
 
-    document.getElementById('btnRefresh').onclick = load;
+      function setSelectOptions(){
+        platformSel.innerHTML = '<option value="">All Platforms</option>' + [...state.sets.platform].sort().map(v=>`<option>${v}</option>`).join('');
+        statusSel.innerHTML = '<option value="">All Status</option>' + [...state.sets.status].sort().map(v=>`<option>${v}</option>`).join('');
+      }
 
-    load();
-    setInterval(load, 5*60*1000);
-  </script>
-</body>
+      function render(){
+        const p = platformSel.value;
+        const s = statusSel.value;
+        state.filtered = state.items.filter(it => (!p || it.platform===p) && (!s || it.status===s));
+        if (state.filtered.length === 0){
+          gridEl.innerHTML = '<div class="empty">Sin resultados</div>';
+          return;
+        }
+        gridEl.innerHTML = state.filtered.map(it=>{
+          const title = (it.title || 'Sin título').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+          const date = it.date ? new Date(it.date).toLocaleDateString() : '';
+          const img = it.image ? `<img src="${it.image}" alt="${title}" loading="lazy">` : '';
+          const click = it.link ? `onclick="window.open('${it.link}','_blank')"` : '';
+          return `
+            <div class="tile" ${click}>
+              ${img}
+              <div class="overlay"></div>
+              <div class="meta">
+                <div class="title">${title}</div>
+                ${date?`<div class="date">${date}</div>`:''}
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      async function loadHealth(){
+        try{
+          const r = await fetch('/api/health');
+          if(!r.ok) throw new Error('HTTP '+r.status);
+          const h = await r.json();
+          state.health = h;
+
+          // Bio data desde env (opcional)
+          bioName.textContent = h.bioName || '';
+          bioText.textContent = h.bioText || '';
+          if (h.bioAvatar) { bioAvatar.src = h.bioAvatar; bioAvatar.alt = h.bioName || 'avatar'; }
+          else bioAvatar.style.display = 'none';
+          bioChips.innerHTML = '';
+          if (h.bioUrl) bioChips.innerHTML += `<a class="chip" href="${h.bioUrl}" target="_blank" rel="noopener noreferrer">Link</a>`;
+
+          applyToggles();
+        }catch(e){
+          // no es crítico para renderizar el grid
+        }
+      }
+
+      async function loadGrid(){
+        try{
+          setErr('');
+          refreshBtn.disabled = true;
+          const r = await fetch('/api/grid');
+          if(!r.ok){
+            const t = await r.text().catch(()=> '');
+            throw new Error('HTTP '+r.status+(t?` - ${t}`:''));
+          }
+          const data = await r.json();
+          state.items = (data.items||[]);
+
+          // recopilar sets
+          state.sets.platform = new Set(state.items.filter(x=>!!x.platform).map(x=>x.platform));
+          state.sets.status = new Set(state.items.filter(x=>!!x.status).map(x=>x.status));
+          setSelectOptions();
+
+          // highlights (pinned)
+          highlightsEl.innerHTML = '';
+          (state.items.filter(x=>x.pinned).slice(0,6)).forEach(it=>{
+            const d = document.createElement('a');
+            d.className='hl';
+            if (it.link){ d.href = it.link; d.target = '_blank'; d.rel = 'noopener noreferrer'; }
+            d.innerHTML = it.image ? `<img src="${it.image}" alt="">` : '';
+            highlightsEl.appendChild(d);
+          });
+          applyToggles();
+
+          render();
+        }catch(e){
+          setErr('❌ Error al cargar: '+e.message+'. Revisa /api/health y variables en Vercel.');
+        }finally{
+          refreshBtn.disabled = false;
+        }
+      }
+
+      // events
+      document.addEventListener('click', (ev)=>{
+        if (!dd.contains(ev.target) && ev.target!==kebab) kebabOpen(false);
+      });
+      kebab.addEventListener('click', ()=> kebabOpen(!dd.classList.contains('open')));
+      refreshBtn.addEventListener('click', ()=> loadGrid());
+      platformSel.addEventListener('change', render);
+      statusSel.addEventListener('change', render);
+
+      // toggles
+      state.showBio = ls.getItem('showBio') === '1';
+      state.showHL = ls.getItem('showHL') === '1';
+      applyToggles();
+
+      toggleBio.addEventListener('click', ()=>{
+        state.showBio = !state.showBio; ls.setItem('showBio', state.showBio?'1':'0'); applyToggles();
+      });
+      toggleHL.addEventListener('click', ()=>{
+        state.showHL = !state.showHL; ls.setItem('showHL', state.showHL?'1':'0'); applyToggles();
+      });
+
+      // start
+      (async function init(){
+        await loadHealth();
+        await loadGrid();
+      })();
+    </script>
+  </body>
 </html>
