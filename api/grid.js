@@ -1,132 +1,134 @@
-import { Client } from "@notionhq/client";
+// /api/grid.js
+const NOTION_TOKEN = process.env.NOTION_TOKEN;
+const NOTION_DATABASE_ID = process.env.NOTION_DATABASE_ID;
+const NOTION_VERSION = "2022-06-28";
 
-const notion = new Client({ auth: process.env.NOTION_TOKEN });
-const DB = process.env.NOTION_DATABASE_ID;
-
-// Utilidades para encontrar propiedades por nombre (case-insensitive)
-const findKey = (props, candidates) =>
-  Object.keys(props || {}).find(k =>
-    candidates.some(c => k.trim().toLowerCase() === c));
-
-const textOut = (rt = []) => rt.map(t => t.plain_text || "").join("").trim();
-
+// --- utils ---
 const isVideoUrl = (u = "") => /\.(mp4|webm|mov|m4v)(\?|$)/i.test(u);
+const getText = (arr = []) => arr.map(t => t.plain_text || "").join("").trim();
+const findKey = (props = {}, candidates = []) => {
+  const keys = Object.keys(props);
+  const low = key => key.trim().toLowerCase();
+  return keys.find(k => candidates.some(c => low(k) === c.toLowerCase())) || null;
+};
 
-function pickProps(page){
+async function queryAll(databaseId) {
+  let results = [];
+  let cursor = undefined;
+  do {
+    const r = await fetch("https://api.notion.com/v1/databases/" + databaseId + "/query", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${NOTION_TOKEN}`,
+        "Notion-Version": NOTION_VERSION,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ page_size: 100, start_cursor: cursor }),
+    });
+    if (!r.ok) throw new Error(`Notion query failed: ${r.status}`);
+    const json = await r.json();
+    results = results.concat(json.results || []);
+    cursor = json.has_more ? json.next_cursor : undefined;
+  } while (cursor);
+  return results;
+}
+
+function pickFromPage(page) {
   const p = page.properties || {};
 
-  const titleKey   = findKey(p, ["name","title"]);
-  const dateKey    = findKey(p, ["publish date","date"]);
-  const platKey    = findKey(p, ["platform","platforms"]);
-  const statusKey  = findKey(p, ["status"]);
-  const capKey     = findKey(p, ["caption","text"]);
-  const attachKey  = findKey(p, ["attachment","image","files"]);
-  const linkKey    = findKey(p, ["link","url"]);
-  const srcKey     = findKey(p, ["image source","source"]);
-  const pinKey     = findKey(p, ["pinned","pin"]);
-  const hideKey    = findKey(p, ["hide","hidden","archive","archived"]);
+  const titleK  = findKey(p, ["Name","Title"]);
+  const dateK   = findKey(p, ["Publish Date","Date","Fecha"]);
+  const platK   = findKey(p, ["Platform","Platforms","Plataforma"]);
+  const statusK = findKey(p, ["Status","Estado"]);
+  const capK    = findKey(p, ["Caption","Descripción","Description","Text"]);
+  const attachK = findKey(p, ["Attachment","Image","Files","Image Files"]);
+  const linkK   = findKey(p, ["Link","URL","Image URL"]);
+  const srcK    = findKey(p, ["Image Source","Source"]);
+  const pinK    = findKey(p, ["Pinned","Pin","Destacado"]);
+  const hideK   = findKey(p, ["Hide","Hidden","Ocultar","Archive","Archived"]);
 
-  const title  = titleKey  ? textOut(p[titleKey].title) : "";
-  const date   = dateKey   ? (p[dateKey].date?.start || null) : null;
-  const caption= capKey    ? textOut(p[capKey].rich_text) : "";
-  const status = statusKey ? (p[statusKey].select?.name || null) : null;
-  const platforms = platKey ? (p[platKey].multi_select || []).map(x => x.name) : [];
-  const pinned = pinKey ? !!p[pinKey].checkbox : false;
-  const hidden = hideKey ? !!p[hideKey].checkbox : false;
-  const imgSrcPref = srcKey ? (p[srcKey].select?.name || "").toLowerCase() : "";
+  const title     = titleK  ? getText(p[titleK].title) : "";
+  const caption   = capK    ? getText(p[capK].rich_text) : "";
+  const publishDt = dateK   ? (p[dateK].date?.start || null) : null;
+  const status    = statusK ? (p[statusK].select?.name || null) : null;
 
-  // Link / Attachment / Cover
-  const linkUrl = linkKey ? (p[linkKey].url || "") : "";
-  const files   = attachKey ? (p[attachKey].files || []) : [];
+  let platforms = [];
+  if (platK) {
+    if (p[platK].multi_select?.length) platforms = p[platK].multi_select.map(x => x.name);
+    else if (p[platK].select?.name) platforms = [p[platK].select.name];
+  }
+
+  const pinned = pinK ? !!p[pinK].checkbox : false;
+  const hidden = hideK ? !!p[hideK].checkbox : false;
+
+  const imgSrcPref = srcK ? (p[srcK].select?.name || "").toLowerCase() : "";
+  const files = attachK ? (p[attachK].files || []) : [];
   const fileUrl = files[0]?.file?.url || files[0]?.external?.url || "";
-  const cover   = page.cover?.file?.url || page.cover?.external?.url || "";
+  const linkUrl = linkK ? (p[linkK].url || "") : "";
+  const cover = page.cover?.file?.url || page.cover?.external?.url || "";
 
-  // Selección de media (4:5)
   let mediaUrl = "";
   let kind = "image";
+  const decide = url => { kind = isVideoUrl(url) ? "video" : "image"; return url; };
 
-  if (imgSrcPref === "link" && linkUrl){
-    mediaUrl = linkUrl; kind = isVideoUrl(linkUrl) ? "video" : "image";
-  } else if (imgSrcPref === "image attachment" && fileUrl){
-    mediaUrl = fileUrl; kind = isVideoUrl(fileUrl) ? "video" : "image";
-  } else if (fileUrl){
-    mediaUrl = fileUrl; kind = isVideoUrl(fileUrl) ? "video" : "image";
-  } else if (linkUrl){
-    mediaUrl = linkUrl; kind = isVideoUrl(linkUrl) ? "video" : "image";
-  } else if (cover){
-    mediaUrl = cover; kind = "image";
-  }
+  if (imgSrcPref === "link" && linkUrl)       mediaUrl = decide(linkUrl);
+  else if (imgSrcPref.startsWith("image") && fileUrl) mediaUrl = decide(fileUrl);
+  else if (fileUrl)                            mediaUrl = decide(fileUrl);
+  else if (linkUrl)                            mediaUrl = decide(linkUrl);
+  else if (cover)                              mediaUrl = decide(cover);
 
   return {
     id: page.id,
     title,
-    publishDate: date,
     caption,
-    platforms,
+    publishDate: publishDt,
     status,
+    platforms,
     pinned,
     hidden,
     media: mediaUrl ? { kind, url: mediaUrl } : null,
   };
 }
 
-async function fetchAll(databaseId){
-  let results = [];
-  let cursor = undefined;
-  do{
-    const rsp = await notion.databases.query({
-      database_id: databaseId,
-      page_size: 100,
-      start_cursor: cursor,
-    });
-    results.push(...rsp.results);
-    cursor = rsp.has_more ? rsp.next_cursor : undefined;
-  } while(cursor);
-  return results;
-}
-
-export default async function handler(req, res){
-  try{
-    if (!process.env.NOTION_TOKEN || !DB){
-      res.status(500).json({ ok:false, error:"Missing NOTION_TOKEN or NOTION_DATABASE_ID" });
+module.exports = async (req, res) => {
+  try {
+    if (!NOTION_TOKEN || !NOTION_DATABASE_ID) {
+      res.status(500).json({ ok: false, error: "Missing NOTION_TOKEN or NOTION_DATABASE_ID" });
       return;
     }
 
+    const all = await queryAll(NOTION_DATABASE_ID);
+    let items = all.map(pickFromPage);
+
+    // Ocultar "Hide"
+    items = items.filter(it => !it.hidden && it.media);
+
+    // Filtros (case-insensitive)
     const { platform = "", status = "", limit = "12" } = req.query || {};
-    const wantPlatforms = platform ? platform.split(",").map(s=>s.trim().toLowerCase()).filter(Boolean) : [];
-    const wantStatus    = status ? status.split(",").map(s=>s.trim().toLowerCase()).filter(Boolean) : [];
-    const LIM = Math.max(1, Math.min(60, parseInt(limit,10) || 12)); // tope 60
+    const wantP = platform ? platform.split(",").map(s => s.trim().toLowerCase()).filter(Boolean) : [];
+    const wantS = status ? status.split(",").map(s => s.trim().toLowerCase()).filter(Boolean) : [];
 
-    const pages = await fetchAll(DB);
-    let items = pages.map(pickProps);
-
-    // Filtrar ocultos
-    items = items.filter(it => !it.hidden);
-
-    // Filtrar por platform / status
-    if (wantPlatforms.length){
-      items = items.filter(it =>
-        (it.platforms||[]).some(x => wantPlatforms.includes(String(x).toLowerCase()))
-      );
+    if (wantP.length) {
+      items = items.filter(it => (it.platforms || []).some(p => wantP.includes(String(p).toLowerCase())));
     }
-    if (wantStatus.length){
-      items = items.filter(it => it.status && wantStatus.includes(String(it.status).toLowerCase()));
+    if (wantS.length) {
+      items = items.filter(it => it.status && wantS.includes(String(it.status).toLowerCase()));
     }
 
     // Orden: pinned desc, fecha desc
-    items.sort((a,b)=>{
+    items.sort((a, b) => {
       if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
       const da = a.publishDate ? Date.parse(a.publishDate) : 0;
       const db = b.publishDate ? Date.parse(b.publishDate) : 0;
       return db - da;
     });
 
-    // Limitar a N
+    // Límite
+    const LIM = Math.max(1, Math.min(60, parseInt(limit, 10) || 12));
     items = items.slice(0, LIM);
 
-    res.status(200).json({ ok:true, items });
-  }catch(err){
-    console.error(err);
-    res.status(200).json({ ok:false, error: String(err?.message || err) });
+    res.status(200).json({ ok: true, items });
+  } catch (err) {
+    res.status(200).json({ ok: false, error: String(err?.message || err) });
   }
-}
+};
