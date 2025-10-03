@@ -6,20 +6,18 @@
   <title>Grid</title>
   <style>
     :root{
-      --container: 936px;         /* ancho tipo IG */
-      --gap: 2px;                 /* separación mínima */
-      --cols: 3;                  /* SIEMPRE 3 columnas */
+      --container: 936px;          /* ancho tipo IG web */
+      --gap: 2px;                  /* separación mínima IG */
+      --cols: 3;                   /* siempre 3 columnas */
       --ink:#111; --muted:#69707a; --line:rgba(0,0,0,.08); --ghost:#f5f5f5; --white:#fff;
       --overlay: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,.55) 100%);
     }
     *{box-sizing:border-box}
     html,body{margin:0;background:#fff;color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,Helvetica,Arial}
-    a{color:inherit;text-decoration:none}
-    button{font:inherit}
-
+    a{color:inherit;text-decoration:none} button{font:inherit}
     .wrap{max-width:var(--container); margin:0 auto; padding:16px 12px 40px;}
 
-    /* topbar */
+    /* Topbar */
     .topbar{display:flex;align-items:center;gap:10px;padding:4px 0 12px;}
     .iconbtn{display:inline-flex;align-items:center;gap:8px;border:none;background:#111;color:#fff;padding:10px 14px;border-radius:12px;cursor:pointer}
     .iconbtn .spin{display:inline-block;transition:transform .6s linear}
@@ -35,61 +33,63 @@
       linear-gradient(#fff 0 0) 50% 50%/100% 2px,
       linear-gradient(#fff 0 0) 50% bottom/100% 2px; background-repeat:no-repeat; margin-right:6px}
 
-    /* filtros plegables */
+    /* Filtros plegables */
     .filters{overflow:hidden;max-height:0;transition:max-height .25s ease;border-bottom:1px solid var(--line)}
     .filters.open{max-height:180px}
     .filters-inner{display:flex;gap:12px;padding:8px 0 12px}
     .chip{display:inline-flex;align-items:center;gap:10px;background:#f5f5f5;border:1px solid var(--line);border-radius:12px;padding:10px 12px;cursor:pointer;user-select:none}
     .chip .count{color:var(--muted);font-weight:600}
 
-    /* grid IG */
+    /* Grid IG */
     .grid{margin-top:12px;display:grid;grid-template-columns:repeat(var(--cols),1fr);gap:var(--gap)}
     .card{position:relative;aspect-ratio:4/5;background:#eaeaea;overflow:hidden}
     .card img,.card video{width:100%;height:100%;object-fit:cover;display:block}
 
-    /* overlay hover */
-    .meta-overlay{position:absolute;inset:auto 0 0 0;background:var(--overlay);padding:10px 12px;display:flex;justify-content:space-between;align-items:flex-end;color:#fff;opacity:0;transform:translateY(8px);transition:.15s ease;font-weight:600;font-size:15px}
+    /* Overlay hover */
+    .meta-overlay{position:absolute;inset:auto 0 0 0;background:var(--overlay);padding:10px 12px;
+      display:flex;justify-content:space-between;align-items:flex-end;color:#fff;opacity:0;transform:translateY(8px);
+      transition:.15s ease;font-weight:600;font-size:15px}
     .card:hover .meta-overlay{opacity:1;transform:translateY(0)}
 
-    /* icons */
+    /* Iconos (pin/play) */
     .meta-icons{position:absolute;top:8px;right:8px;display:flex;gap:6px;pointer-events:none}
     .icon{width:22px;height:22px;display:grid;place-items:center;background:rgba(0,0,0,.6);color:#fff;border-radius:6px;font-size:12px}
     .icon[hidden]{display:none!important}
 
-    /* menú ... */
+    /* Menú … */
     .menu{position:relative}
-    .menu-panel{position:absolute;right:0;top:44px;min-width:240px;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.08);padding:10px;display:none}
+    .menu-panel{position:absolute;right:0;top:44px;min-width:240px;background:#fff;border:1px solid var(--line);
+      border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.08);padding:10px;display:none}
     .menu.open .menu-panel{display:block}
     .menu-row{display:flex;align-items:center;justify-content:space-between;padding:10px;border-radius:10px}
     .menu-row:hover{background:#f7f7f8}
     .switch{width:40px;height:24px;background:#e5e7eb;border-radius:999px;position:relative;transition:.2s}
     .switch::after{content:"";position:absolute;top:2px;left:2px;width:20px;height:20px;background:#fff;border-radius:999px;transition:.2s;box-shadow:0 1px 2px rgba(0,0,0,.2)}
-    .switch.on{background:#111}
-    .switch.on::after{left:18px}
+    .switch.on{background:#111}.switch.on::after{left:18px}
     .menu-note{font-size:13px;color:#6b7280;padding:8px 10px 6px;border-top:1px solid var(--line);margin-top:6px}
 
-    /* lightbox */
+    /* Lightbox */
     .lightbox{position:fixed;inset:0;background:rgba(0,0,0,.75);display:none;align-items:center;justify-content:center;padding:24px;z-index:50}
     .lightbox.open{display:flex}
     .lightbox-inner{max-width:min(800px,90vw);max-height:90vh}
     .lightbox-figure img,.lightbox-figure video{width:100%;height:auto;max-height:80vh;object-fit:contain;display:block;background:#000}
     .lightbox-caption{color:#fff;font-size:14px;line-height:1.45;padding:10px 4px 0}
 
-    /* placeholders No Content */
+    /* No Content */
     .placeholder{background:#efefef;color:#9aa1a8;display:grid;place-items:center;font-weight:600}
 
-    /* Bio/Highlights placeholders */
+    /* Bio / Highlights (placeholders) */
     .bio,.highlights{display:none}
     .bio.show,.highlights.show{display:block;padding:12px 2px;border-bottom:1px solid var(--line);color:#32363a}
   </style>
 </head>
 <body>
   <div class="wrap">
-    <!-- opcional: bio/highlights -->
+    <!-- (opcional) bio/highlights -->
     <div id="bio" class="bio"></div>
     <div id="highlights" class="highlights"></div>
 
-    <!-- topbar -->
+    <!-- Topbar -->
     <div class="topbar">
       <button id="refreshBtn" class="iconbtn"><span class="grid-ico"></span><span class="spin">↻</span> Refresh</button>
       <button id="filtersBtn" class="iconbtn ghost" title="Filtros">
@@ -108,7 +108,7 @@
       </div>
     </div>
 
-    <!-- filtros -->
+    <!-- Filtros plegables -->
     <div id="filters" class="filters">
       <div class="filters-inner">
         <div class="chip" id="platformChip">All Platforms <span class="count" id="platformCount"></span></div>
@@ -116,11 +116,11 @@
       </div>
     </div>
 
-    <!-- grid -->
+    <!-- Grid -->
     <div id="grid" class="grid" aria-live="polite" aria-busy="false"></div>
   </div>
 
-  <!-- lightbox -->
+  <!-- Lightbox -->
   <div id="lightbox" class="lightbox" aria-modal="true" role="dialog">
     <div class="lightbox-inner">
       <div class="lightbox-figure" id="lbFigure"></div>
@@ -206,6 +206,7 @@
       const card = document.createElement("div");
       card.className = "card";
 
+      // media
       if (it.media?.kind === "video"){
         const vid = document.createElement("video");
         vid.src = it.media.url;
@@ -221,7 +222,7 @@
         card.appendChild(img);
       }
 
-      // overlay hover
+      // overlay hover (name + date)
       const meta = document.createElement("div");
       meta.className = "meta-overlay";
       const title = document.createElement("span");
@@ -243,7 +244,6 @@
 
       // lightbox
       card.addEventListener("click", ()=>openLightbox(it));
-
       gridEl.appendChild(card);
     });
   }
@@ -269,25 +269,19 @@
   }
   lb.addEventListener("click",(e)=>{ if (e.target === lb) lb.classList.remove("open"); });
 
-  // filtros plegables
+  // filtros (plegar/abrir)
   filtersBtn.addEventListener("click", ()=> filtersEl.classList.toggle("open"));
 
-  // chips → prompt sencillo (luego podemos cambiar a checkboxes estilo Notion)
+  // chips → prompt rápido (luego cambiamos a checkboxes “Notion-like”)
   platformChip.addEventListener("click", ()=>{
     const opts = Array.from(new Set(dataset.flatMap(d => d.platforms || [])));
     const pick = prompt("Platforms (separa por coma):\n\n"+opts.join(", "), selectedPlatforms.join(", "));
-    if (pick !== null){
-      selectedPlatforms = pick.split(",").map(s=>s.trim()).filter(Boolean);
-      loadGrid();
-    }
+    if (pick !== null){ selectedPlatforms = pick.split(",").map(s=>s.trim()).filter(Boolean); loadGrid(); }
   });
   statusChip.addEventListener("click", ()=>{
     const opts = Array.from(new Set(dataset.map(d => d.status).filter(Boolean)));
     const pick = prompt("Status (separa por coma):\n\n"+opts.join(", "), selectedStatus.join(", "));
-    if (pick !== null){
-      selectedStatus = pick.split(",").map(s=>s.trim()).filter(Boolean);
-      loadGrid();
-    }
+    if (pick !== null){ selectedStatus = pick.split(",").map(s=>s.trim()).filter(Boolean); loadGrid(); }
   });
   function updateFilterCounts(){
     platformCount.textContent = selectedPlatforms.length ? `(${selectedPlatforms.length})` : "";
@@ -297,15 +291,12 @@
   // menú …
   menuBtn.addEventListener("click", ()=> menu.classList.toggle("open"));
   document.addEventListener("click",(e)=>{ if(!menu.contains(e.target) && e.target!==menuBtn) menu.classList.remove("open"); });
-
   const toggle = (el,on,target)=>{ el.classList.toggle("on",on); el.setAttribute("aria-checked",String(on)); if (target) target.classList.toggle("show",on); };
   bioSwitch.addEventListener("click", ()=>{ const on=!bioSwitch.classList.contains("on"); toggle(bioSwitch,on,bioEl); if(on && !bioEl.textContent) bioEl.textContent="@your_username · Your Display Name — short bio here…"; });
   hlSwitch.addEventListener("click",  ()=>{ const on=!hlSwitch.classList.contains("on");  toggle(hlSwitch,on,hlEl);  if(on && !hlEl.textContent)  hlEl.textContent="Highlights: add yours in Account → Edit."; });
 
-  // refresh
+  // inicio
   refreshBtn.addEventListener("click", loadGrid);
-
-  // init
   loadGrid();
 })();
 </script>
