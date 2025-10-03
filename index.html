@@ -4,7 +4,66 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Notion Grid Widget</title>
-    <style>
+    <style>/* === Grace theme === */
+:root{
+  --cols: 3;          /* # de columnas (lo podrás cambiar por URL) */
+  --gap: 14px;        /* separación */
+  --radius: 16px;     /* bordes de la tarjeta */
+}
+
+/* rejilla controlada por variables */
+.grid{
+  display:grid;
+  grid-template-columns: repeat(var(--cols), 1fr);
+  gap: var(--gap);
+}
+
+/* tarjeta con bordes suaves y hover sutil */
+.card{
+  position: relative;
+  background: #111319;
+  border: 1px solid #262833;
+  border-radius: var(--radius);
+  overflow: hidden;
+  transition: transform .2s ease, border-color .2s ease;
+}
+.card:hover{
+  transform: translateY(-2px);
+  border-color: #6b7cff55;
+}
+
+/* imagen cuadrada tipo “feed”, ligero zoom al hover */
+.thumb{
+  width:100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  display:block;
+  transition: transform .4s ease;
+}
+.card:hover .thumb{ transform: scale(1.03); }
+
+/* título sobrepuesto con degradado oscuro */
+.info{
+  position: absolute;
+  left:0; right:0; bottom:0;
+  padding: 14px 16px;
+  background: linear-gradient(to top, rgba(0,0,0,.65), rgba(0,0,0,0));
+  border-top: 1px solid rgba(255,255,255,.06);
+}
+.card-title{
+  color:#fff;
+  font-size:14px;
+  font-weight:600;
+  line-height:1.3;
+  text-shadow: 0 1px 2px rgba(0,0,0,.35);
+}
+
+/* ocultamos el link de texto (ya abre al clickear la tarjeta) */
+.link{ display:none; }
+
+/* Modo embed: ocultar cabecera y pie para Notion */
+body.embed .header, body.embed .footer{ display:none; }
+body.embed .wrap{ padding-top: 8px; }
       :root { --gap:16px; --card:12px; --bg:#0b0b0c; --panel:#1a1a1f; --text:#f3f3f3; --muted:#a0a0aa; --border:#2a2a32; --accent:#8ab4ff; }
       *{margin:0;padding:0;box-sizing:border-box}
       html,body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Inter',sans-serif;line-height:1.5}
