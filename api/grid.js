@@ -1,4 +1,4 @@
-// /api/grid.js — Notion → JSON para el grid (máx 12)
+// /api/grid.js
 const NOTION_TOKEN = process.env.NOTION_TOKEN;
 const NOTION_DATABASE_ID = process.env.NOTION_DATABASE_ID;
 const NOTION_VERSION = "2022-06-28";
@@ -22,23 +22,18 @@ module.exports = async (req, res) => {
         body: JSON.stringify({ page_size: 100 }),
       }
     );
-
     if (!r.ok) {
-      const text = await r.text();
-      res.status(400).json({ ok: false, error: "Notion query failed", detail: text });
+      res.status(400).json({ ok: false, error: "Notion query failed", detail: await r.text() });
       return;
     }
+    const { results = [] } = await r.json();
 
-    const data = await r.json();
-    const pages = data.results || [];
-
-    // helpers
-    const pick = (props, names) => names.find((n) => props?.[n]) && props[names.find((n)=>props[n])];
+    const pick = (props, keys) => keys.find(k => props?.[k]) && props[keys.find(k => props[k])];
     const rich = (p) => (p?.rich_text || p?.title || []).map(t => t.plain_text || "").join("").trim();
     const sel  = (p) => (p?.select ? p.select.name : null);
     const multi= (p) => (p?.multi_select || []).map(o=>o.name);
     const cb   = (p) => !!p?.checkbox;
-    const dateStart = (p) => p?.date?.start || null;
+    const date = (p) => p?.date?.start || null;
     const isVideo = (u="") => /\.(mp4|mov|webm)(\?|$)/i.test(u);
 
     const readMedia = (props, page) => {
@@ -54,28 +49,18 @@ module.exports = async (req, res) => {
       return isVideo(url) ? { kind:"video", url } : { kind:"image", url };
     };
 
-    const items = pages.map((page) => {
+    const items = results.map(page => {
       const props = page.properties || {};
       const title = rich(pick(props, ["Name","Title"])) || "Sin título";
       const caption = rich(pick(props, ["Caption","Descripción","Description"])) || "";
-      const linkP = pick(props, ["Link","URL"]);
-      const link = (typeof linkP?.url === "string" && linkP.url) || rich(linkP) || null;
-
       const pinned = cb(pick(props, ["Pinned","Pin","Destacado"]));
       const hide   = cb(pick(props, ["Hide","Hidden","Ocultar"]));
-
-      const publishDate = dateStart(pick(props, ["Publish Date","Date","Fecha"]));
-
-      const platProp = pick(props, ["Platform","Platforms","Plataforma"]);
-      const platforms = platProp
-        ? (multi(platProp).length ? multi(platProp) : [sel(platProp)].filter(Boolean))
-        : [];
-
+      const publishDate = date(pick(props, ["Publish Date","Date","Fecha"]));
+      const plat = pick(props, ["Platform","Platforms","Plataforma"]);
+      const platforms = plat ? (multi(plat).length ? multi(plat) : [sel(plat)].filter(Boolean)) : [];
       const status = sel(pick(props, ["Status","Estado"])) || "";
-
       const media = readMedia(props, page);
-
-      return { id: page.id, title, caption, link, pinned, hide, publishDate, platforms, status, media };
+      return { id: page.id, title, caption, pinned, hide, publishDate, platforms, status, media };
     });
 
     // filtros
@@ -87,7 +72,7 @@ module.exports = async (req, res) => {
     if (wantP.length) filtered = filtered.filter(it => it.platforms.some(p => wantP.includes(p)));
     if (wantS.length) filtered = filtered.filter(it => wantS.includes(it.status));
 
-    // orden: pinned, fecha desc, título
+    // orden: pinned → fecha desc → título
     filtered.sort((a,b)=>{
       if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
       const da = a.publishDate ? Date.parse(a.publishDate) : 0;
