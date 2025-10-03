@@ -4,99 +4,90 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Notion Grid Widget</title>
-    <style>/* === Grace theme === */
-:root{
-  --cols: 3;          /* # de columnas (lo podrás cambiar por URL) */
-  --gap: 14px;        /* separación */
-  --radius: 16px;     /* bordes de la tarjeta */
-}
+    <style>
+      :root {
+        --gap: 16px;         /* separación entre tarjetas */
+        --radius: 12px;      /* borde redondeado de tarjetas */
+        --bg: #0b0b0c;
+        --panel: #1a1a1f;
+        --text: #f3f3f3;
+        --muted: #a0a0aa;
+        --border: #2a2a32;
+        --accent: #8ab4ff;
+        --pad: 32px;         /* padding lateral */
+        --title: 32px;       /* tamaño del título */
+      }
 
-/* rejilla controlada por variables */
-.grid{
-  display:grid;
-  grid-template-columns: repeat(var(--cols), 1fr);
-  gap: var(--gap);
-}
+      * { box-sizing: border-box; margin: 0; padding: 0; }
 
-/* tarjeta con bordes suaves y hover sutil */
-.card{
-  position: relative;
-  background: #111319;
-  border: 1px solid #262833;
-  border-radius: var(--radius);
-  overflow: hidden;
-  transition: transform .2s ease, border-color .2s ease;
-}
-.card:hover{
-  transform: translateY(-2px);
-  border-color: #6b7cff55;
-}
+      html, body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
+        line-height: 1.5;
+      }
 
-/* imagen cuadrada tipo “feed”, ligero zoom al hover */
-.thumb{
-  width:100%;
-  aspect-ratio: 1 / 1;
-  object-fit: cover;
-  display:block;
-  transition: transform .4s ease;
-}
-.card:hover .thumb{ transform: scale(1.03); }
+      .wrap {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: var(--pad) 20px;
+      }
 
-/* título sobrepuesto con degradado oscuro */
-.info{
-  position: absolute;
-  left:0; right:0; bottom:0;
-  padding: 14px 16px;
-  background: linear-gradient(to top, rgba(0,0,0,.65), rgba(0,0,0,0));
-  border-top: 1px solid rgba(255,255,255,.06);
-}
-.card-title{
-  color:#fff;
-  font-size:14px;
-  font-weight:600;
-  line-height:1.3;
-  text-shadow: 0 1px 2px rgba(0,0,0,.35);
-}
+      .header { text-align: center; margin-bottom: 28px; }
+      h1 {
+        font-size: var(--title);
+        font-weight: 700;
+        margin-bottom: 8px;
+        background: linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+      .subtitle { color: var(--muted); font-size: 16px; }
 
-/* ocultamos el link de texto (ya abre al clickear la tarjeta) */
-.link{ display:none; }
+      .state { color: var(--muted); font-size: 14px; text-align: center; padding: 12px; margin: 16px 0 8px; }
+      .state.loading { animation: pulse 1.6s ease-in-out infinite; }
+      .state.error {
+        color:#ffb3b3; background: rgba(255,179,179,.1); border: 1px solid rgba(255,179,179,.3);
+        border-radius: 8px;
+      }
+      @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
 
-/* Modo embed: ocultar cabecera y pie para Notion */
-body.embed .header, body.embed .footer{ display:none; }
-body.embed .wrap{ padding-top: 8px; }
-      :root { --gap:16px; --card:12px; --bg:#0b0b0c; --panel:#1a1a1f; --text:#f3f3f3; --muted:#a0a0aa; --border:#2a2a32; --accent:#8ab4ff; }
-      *{margin:0;padding:0;box-sizing:border-box}
-      html,body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Inter',sans-serif;line-height:1.5}
-      .wrap{max-width:1200px;margin:0 auto;padding:32px 20px}
-      .header{text-align:center;margin-bottom:40px}
-      h1{font-size:32px;font-weight:700;margin-bottom:8px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-      .subtitle{color:var(--muted);font-size:16px}
-      .state{color:var(--muted);font-size:14px;padding:12px;text-align:center;margin-bottom:20px}
-      .state.loading{animation:pulse 1.5s ease-in-out infinite}
-      @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
-      .state.error{color:#ffb3b3;background:rgba(255,179,179,.1);border:1px solid rgba(255,179,179,.3);border-radius:8px}
-      .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--gap);margin-bottom:32px}
-      @media (max-width:900px){.grid{grid-template-columns:repeat(2,1fr)}}
-      @media (max-width:600px){.grid{grid-template-columns:1fr}.wrap{padding:20px 16px}h1{font-size:24px}}
-      .card{background:var(--panel);border-radius:var(--card);overflow:hidden;border:1px solid var(--border);transition:all .3s ease;cursor:pointer}
-      .card:hover{transform:translateY(-4px);box-shadow:0 8px 24px rgba(0,0,0,.4);border-color:var(--accent)}
-      .thumb{width:100%;height:280px;object-fit:cover;display:block;background:linear-gradient(135deg,#2a2a32 0%,#1a1a1f 100%)}
-      .thumb.placeholder{display:flex;align-items:center;justify-content:center;font-size:48px;color:var(--muted)}
-      .info{padding:16px}
-      .card-title{font-size:15px;font-weight:600;margin-bottom:8px;color:var(--text);line-height:1.4}
-      .link{color:var(--accent);text-decoration:none;font-size:13px;display:inline-flex;align-items:center;gap:4px;transition:opacity .2s}
-      .link:hover{opacity:.7}
-      .footer{text-align:center;margin-top:48px;padding-top:24px;border-top:1px solid var(--border);color:var(--muted);font-size:13px}
-      .footer a{color:var(--accent);text-decoration:none}
-      .footer a:hover{text-decoration:underline}
-      .empty-state{text-align:center;padding:60px 20px;grid-column:1 / -1}
-      .empty-state-icon{font-size:64px;margin-bottom:16px;opacity:.5}
-      .empty-state-text{color:var(--muted);font-size:18px}
+      .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--gap); }
+      @media (max-width: 900px){ .grid{ grid-template-columns: repeat(2,1fr);} }
+      @media (max-width: 600px){ .grid{ grid-template-columns: 1fr;} .wrap{ padding: 20px 16px;} h1{ font-size:24px;} }
+
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        overflow: hidden;
+        transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease;
+        cursor: pointer;
+      }
+      .card:hover { transform: translateY(-4px); box-shadow: 0 10px 24px rgba(0,0,0,.35); border-color: var(--accent); }
+
+      .thumb { width: 100%; height: 280px; object-fit: cover; display: block; background: linear-gradient(135deg,#2a2a32 0%,#1a1a1f 100%); }
+      .thumb.placeholder{ display:flex; align-items:center; justify-content:center; font-size:48px; color: var(--muted); }
+
+      .info { padding: 14px 16px; }
+      .card-title { font-size: 15px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .link { color: var(--accent); text-decoration: none; font-size: 13px; display:inline-block; margin-top:6px; }
+      .link:hover { opacity: .75; }
+
+      .footer { text-align:center; margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--border); color: var(--muted); font-size: 13px; }
+      .footer a { color: var(--accent); text-decoration: none; }
+      .footer a:hover { text-decoration: underline; }
+
+      .empty-state { text-align:center; padding: 60px 20px; grid-column: 1 / -1; }
+      .empty-state-icon { font-size: 64px; margin-bottom: 16px; opacity: .5; }
+      .empty-state-text { color: var(--muted); font-size: 18px; }
     </style>
   </head>
+
   <body>
-    <div class="wrap">
-      <div class="header">
+    <div class="wrap" id="wrap">
+      <div class="header" id="header">
         <h1>📸 Notion Grid Widget</h1>
         <p class="subtitle">Tu contenido de Notion en un grid hermoso</p>
       </div>
@@ -104,22 +95,55 @@ body.embed .wrap{ padding-top: 8px; }
       <div id="state" class="state loading">Cargando posts...</div>
       <div id="grid" class="grid"></div>
 
-      <div class="footer">
-        Powered by <a href="https://notion.so" target="_blank">Notion</a> +
-        <a href="https://vercel.com" target="_blank">Vercel</a>
+      <div class="footer" id="footer">
+        Powered by <a href="https://notion.so" target="_blank" rel="noreferrer">Notion</a> +
+        <a href="https://vercel.com" target="_blank" rel="noreferrer">Vercel</a>
       </div>
     </div>
 
     <script>
+      // Lee parámetros de la URL para personalizar sin tocar código:
+      // ?cols=3&gap=12&radius=16&embed=1
+      (function applyUrlOptions() {
+        const qs = new URLSearchParams(location.search);
+        const cols   = parseInt(qs.get("cols") || "3", 10);
+        const gap    = parseInt(qs.get("gap")  || "16", 10);
+        const radius = parseInt(qs.get("radius") || "12", 10);
+        const embed  = qs.get("embed") === "1";
+
+        const root = document.documentElement;
+        root.style.setProperty("--gap",    `${Math.max(0, gap)}px`);
+        root.style.setProperty("--radius", `${Math.max(0, radius)}px`);
+
+        const grid = document.getElementById("grid");
+        grid.style.gridTemplateColumns = `repeat(${Math.max(1, cols)}, 1fr)`;
+
+        if (embed) {
+          root.style.setProperty("--pad", "8px");
+          root.style.setProperty("--title", "20px");
+          document.getElementById("header").style.display = "none";
+          document.getElementById("footer").style.display = "none";
+        }
+      })();
+
+      function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
       async function loadGrid() {
         const stateEl = document.getElementById("state");
-        const gridEl = document.getElementById("grid");
+        const gridEl  = document.getElementById("grid");
+
+        stateEl.className = "state loading";
+        stateEl.style.display = "block";
+        stateEl.textContent = "Cargando posts...";
+
         try {
-          const response = await fetch("/api/grid");
-          if (!response.ok) throw new Error(`HTTP ${response.status}`);
-          const data = await response.json();
-          const items = data.items || [];
+          const res = await fetch("/api/grid", { cache: "no-store" });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const data = await res.json();
+          const items = Array.isArray(data.items) ? data.items : [];
+
           stateEl.style.display = "none";
+
           if (items.length === 0) {
             gridEl.innerHTML = `
               <div class="empty-state">
@@ -128,41 +152,42 @@ body.embed .wrap{ padding-top: 8px; }
               </div>`;
             return;
           }
+
           gridEl.innerHTML = items.map(item => {
-            const title = (item.title || "Sin título").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-            const imageHtml = item.image
+            const title = esc(item.title || "Sin título");
+            const img   = item.image
               ? `<img class="thumb" src="${item.image}" alt="${title}" loading="lazy">`
               : `<div class="thumb placeholder">🖼️</div>`;
-            const linkHtml = item.link
+            const link  = item.link
               ? `<a class="link" href="${item.link}" target="_blank" rel="noopener noreferrer">Abrir enlace →</a>`
               : "";
-            const click = item.link ? `onclick="window.open('${item.link}','_blank')"` : "";
-            return `<div class="card" ${click}>${imageHtml}<div class="info"><div class="card-title">${title}</div>${linkHtml}</div></div>`;
+
+            const onclick = item.link ? `onclick="window.open('${item.link}','_blank')"` : "";
+            return `
+              <div class="card" ${onclick}>
+                ${img}
+                <div class="info">
+                  <div class="card-title">${title}</div>
+                  ${link}
+                </div>
+              </div>`;
           }).join("");
         } catch (e) {
+          console.error(e);
           stateEl.className = "state error";
           stateEl.textContent = `❌ Error al cargar: ${e.message}. Verifica /api/health y las variables de entorno.`;
           stateEl.style.display = "block";
         }
       }
+
+      // Llamadas correctas (¡dentro del <script>!):
       loadGrid();
-        } // ← aquí termina la función loadGrid()
-
-  // ---- Controles por URL (pegar aquí) ----
-  const params = new URLSearchParams(location.search);
-
-  if (params.get('embed') === '1') {
-    document.body.classList.add('embed');
-  }
-  if (params.get('cols'))   document.documentElement.style.setProperty('--cols', params.get('cols'));
-  if (params.get('gap'))    document.documentElement.style.setProperty('--gap', params.get('gap') + 'px');
-  if (params.get('radius')) document.documentElement.style.setProperty('--radius', params.get('radius') + 'px');
-  // ----------------------------------------
-
-  loadGrid();
-  setInterval(loadGrid, 5 * 60 * 1000);
-</script>
+      // refresca cada 5 min
       setInterval(loadGrid, 5 * 60 * 1000);
+      // si vuelves a la pestaña, refresca
+      document.addEventListener("visibilitychange", () => {
+        if (!document.hidden) loadGrid();
+      });
     </script>
   </body>
 </html>
