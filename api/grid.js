@@ -1,125 +1,163 @@
+// /api/grid.js  — Vercel Node.js (CommonJS)
+// Lee una Database de Notion y devuelve hasta 12 ítems listos para el grid.
+
+const NOTION_TOKEN = process.env.NOTION_TOKEN;
+const NOTION_DATABASE_ID = process.env.NOTION_DATABASE_ID;
 const NOTION_VERSION = "2022-06-28";
 
-/* Helpers para leer propiedades con nombres variables */
-function pickTitle(props = {}) {
-  const name = props?.Name?.title?.[0]?.plain_text;
-  const caption = props?.Caption?.rich_text?.[0]?.plain_text;
-  const titleRt = props?.Title?.rich_text?.[0]?.plain_text;
-  return name || caption || titleRt || "Sin título";
-}
-function pickLink(props = {}) {
-  return props?.Link?.url || props?.URL?.url || null;
-}
-function pickImage(page) {
-  const props = page.properties || {};
-  const f = props?.Image?.files?.[0] || props?.Attachment?.files?.[0] || null;
-  if (f) return f.type === "file" ? f.file.url : f.external.url;
-  if (props?.["Image Source"]?.url) return props["Image Source"].url;
-  const cover = page.cover;
-  if (cover) return cover.type === "file" ? cover.file.url : cover.external.url;
-  return null;
-}
-function pickVideo(page){
-  const props = page.properties || {};
-  const f = props?.Video?.files?.[0] || null;
-  if (!f) return null;
-  return f.type === "file" ? f.file.url : f.external.url;
-}
-function pickPlatforms(props = {}) {
-  const candidates = [props.Platforms, props.Platform, props.Plataformas, props.Plataforma];
-  const p = candidates.find(Boolean);
-  if (!p) return [];
-  if (p.type === "multi_select") return p.multi_select.map(o => o.name);
-  if (p.type === "select") return p.select ? [p.select.name] : [];
-  if (p.type === "rich_text") return p.rich_text.map(r => r.plain_text).filter(Boolean);
-  return [];
-}
-function pickStatus(props = {}) {
-  const candidates = [props.Status, props.Estado, props.State];
-  const s = candidates.find(Boolean);
-  if (!s) return null;
-  if (s.type === "select") return s.select ? s.select.name : null;
-  if (s.type === "rich_text") return s.rich_text?.[0]?.plain_text || null;
-  return null;
-}
-function pickPinned(props = {}) {
-  const candidates = [props.Pinned, props.Pin, props.Star, props["⭐ Pin"]];
-  const c = candidates.find(Boolean);
-  return !!(c && c.checkbox === true);
-}
-function pickDate(props = {}) {
-  const candidates = [props.Date, props.Fecha, props.Published];
-  const d = candidates.find(Boolean);
-  return d?.date?.start || null;
-}
-function pickTags(props = {}) {
-  const candidates = [props.Tags, props.Labels, props.Etiquetas];
-  const t = candidates.find(Boolean);
-  if (!t) return [];
-  if (t.type === "multi_select") return t.multi_select.map(x=>x.name);
-  return [];
-}
-
 export default async function handler(req, res) {
+  if (!NOTION_TOKEN || !NOTION_DATABASE_ID) {
+    res.status(400).json({ ok: false, error: "Missing NOTION envs" });
+    return;
+  }
+
   try {
-    const token = process.env.NOTION_TOKEN;
-    const databaseId = process.env.NOTION_DATABASE_ID;
+    const url = `https://api.notion.com/v1/databases/${NOTION_DATABASE_ID}/query`;
 
-    // Modo DEMO si faltan credenciales
-    if (!token || !databaseId) {
-      return res.status(200).json({
-        items: [
-          { id:"d1", title:"Post Demo 1", image:"https://images.unsplash.com/photo-1469474968028-56623f02e42e?q=80&w=1200&auto=format&fit=crop", link:null, platforms:["Instagram"], status:"Done", pinned:true, date:"2025-02-21", tags:["serum"] },
-          { id:"d2", title:"Post Demo 2", image:"https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=1200&auto=format&fit=crop", link:null, platforms:["Tiktok"], status:"In progress", pinned:false, date:"2025-02-19", tags:["30 serum"] },
-          { id:"d3", title:"Post Demo 3", image:"https://images.unsplash.com/photo-1517841905240-472988babdf9?q=80&w=1200&auto=format&fit=crop", link:null, platforms:["Others"], status:"Not started", pinned:false, date:"2025-02-17", tags:["cream"] },
-        ],
-      });
+    // Traemos hasta 100 y filtramos del lado del server (más flexible).
+    const r = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${NOTION_TOKEN}`,
+        "Notion-Version": NOTION_VERSION,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ page_size: 100 }),
+    });
+
+    if (!r.ok) {
+      const text = await r.text();
+      res.status(400).json({ ok: false, error: "Notion query failed", detail: text });
+      return;
     }
 
-    const response = await fetch(
-      `https://api.notion.com/v1/databases/${databaseId}/query`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Notion-Version": NOTION_VERSION,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          page_size: 100,
-          sorts: [{ timestamp: "last_edited_time", direction: "descending" }],
-        }),
+    const data = await r.json();
+    const pages = data.results || [];
+
+    // Helpers
+    const pickProp = (props, names) => {
+      for (const n of names) if (props?.[n]) return props[n];
+      return undefined;
+    };
+    const rich = (prop) =>
+      (prop?.rich_text || prop?.title || [])
+        .map((t) => t.plain_text || "")
+        .join("")
+        .trim();
+    const checkbox = (prop) => !!prop?.checkbox;
+    const dateStart = (prop) => prop?.date?.start || null;
+    const sel = (prop) => (prop?.select ? prop.select.name : null);
+    const multi = (prop) => (prop?.multi_select || []).map((o) => o.name);
+
+    const isVideoUrl = (u = "") => /\.(mp4|mov|webm)(\?|$)/i.test(u);
+
+    const readImageOrVideo = (props, page) => {
+      // 1) Files/Attachment
+      const attach = pickProp(props, ["Attachment", "Image", "Image 1", "Image Files"]);
+      let fileUrl =
+        attach?.files?.[0]?.file?.url ||
+        attach?.files?.[0]?.external?.url ||
+        null;
+
+      // 2) Image Source (url)
+      if (!fileUrl) {
+        const src = pickProp(props, ["Image Source", "Image URL", "Link", "URL"]);
+        const urlFromText = typeof src?.url === "string" ? src.url : rich(src);
+        if (urlFromText) fileUrl = urlFromText;
       }
-    );
 
-    const data = await response.json();
-    if (!response.ok) {
-      return res.status(response.status).json({
-        error: "Notion error",
-        detail: data,
-        message: "Verifica que la integración tenga acceso a la base de datos",
-      });
-    }
+      // 3) Cover de la página
+      if (!fileUrl && page?.cover) {
+        fileUrl = page.cover.type === "file" ? page.cover.file.url : page.cover.external.url;
+      }
 
-    const items = (data.results || []).map((page) => {
+      if (!fileUrl) return null;
+
+      if (isVideoUrl(fileUrl)) {
+        return { kind: "video", url: fileUrl };
+      }
+      return { kind: "image", url: fileUrl };
+    };
+
+    const items = pages.map((page) => {
       const props = page.properties || {};
+
+      const nameProp = pickProp(props, ["Name", "Title"]);
+      const title = rich(nameProp) || "Sin título";
+
+      const captionProp = pickProp(props, ["Caption", "Descripción", "Description"]);
+      const caption = rich(captionProp) || "";
+
+      const linkProp = pickProp(props, ["Link", "URL"]);
+      const link =
+        (typeof linkProp?.url === "string" && linkProp.url) || rich(linkProp) || null;
+
+      const pinnedProp = pickProp(props, ["Pinned", "Pin", "Destacado"]);
+      const hideProp = pickProp(props, ["Hide", "Hidden", "Ocultar"]);
+
+      const dateProp = pickProp(props, ["Publish Date", "Date", "Fecha"]);
+      const publishDate = dateStart(dateProp);
+
+      const platformProp = pickProp(props, ["Platform", "Platforms", "Plataforma"]);
+      const platforms = platformProp
+        ? (multi(platformProp).length ? multi(platformProp) : [sel(platformProp)].filter(Boolean))
+        : [];
+
+      const statusProp = pickProp(props, ["Status", "Estado"]);
+      const status = sel(statusProp) || rich(statusProp) || null;
+
+      const media = readImageOrVideo(props, page);
+
       return {
         id: page.id,
-        title: pickTitle(props),
-        image: pickImage(page),
-        video: pickVideo(page),
-        link: pickLink(props),
-        platforms: pickPlatforms(props),   // ["Instagram","Tiktok","Others"]
-        status: pickStatus(props),         // "Not started" | "In progress" | "Done"
-        pinned: pickPinned(props),         // true/false
-        date: pickDate(props),             // ISO
-        tags: pickTags(props),             // ["serum","cream",...]
+        title,
+        caption,
+        link,
+        pinned: checkbox(pinnedProp),
+        hide: checkbox(hideProp),
+        publishDate, // string ISO o null
+        platforms,   // array de strings
+        status,      // string o null
+        media,       // {kind:"image"|"video", url} | null
       };
     });
 
-    res.status(200).json({ items, count: items.length });
-  } catch (error) {
-    console.error("Error /api/grid:", error);
-    res.status(500).json({ error: "Server error", detail: error.message });
+    // Filtros por query: ?platform=Tik%20Tok,Instagram&status=Done&limit=12
+    const { platform = "", status = "", limit = "12" } = req.query;
+    const wantPlatforms = platform
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const wantStatus = status
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    let filtered = items.filter((it) => !it.hide && it.media);
+
+    if (wantPlatforms.length) {
+      filtered = filtered.filter((it) =>
+        it.platforms.some((p) => wantPlatforms.includes(p))
+      );
+    }
+    if (wantStatus.length) {
+      filtered = filtered.filter((it) => it.status && wantStatus.includes(it.status));
+    }
+
+    // Orden: Pinned primero, luego por fecha desc (si hay), luego por título.
+    filtered.sort((a, b) => {
+      if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+      const da = a.publishDate ? Date.parse(a.publishDate) : 0;
+      const db = b.publishDate ? Date.parse(b.publishDate) : 0;
+      if (db !== da) return db - da;
+      return a.title.localeCompare(b.title);
+    });
+
+    const lim = Math.max(1, Math.min(50, parseInt(limit, 10) || 12));
+    const sliced = filtered.slice(0, lim);
+
+    res.status(200).json({ ok: true, items: sliced });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err?.message || String(err) });
   }
 }
