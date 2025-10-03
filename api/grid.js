@@ -1,5 +1,6 @@
 const NOTION_VERSION = "2022-06-28";
 
+/* Helpers para leer propiedades con nombres variables */
 function pickTitle(props = {}) {
   const name = props?.Name?.title?.[0]?.plain_text;
   const caption = props?.Caption?.rich_text?.[0]?.plain_text;
@@ -11,60 +12,52 @@ function pickLink(props = {}) {
 }
 function pickImage(page) {
   const props = page.properties || {};
-  const f =
-    props?.Image?.files?.[0] ||
-    props?.Cover?.files?.[0] ||
-    props?.Attachment?.files?.[0] ||
-    null;
+  const f = props?.Image?.files?.[0] || props?.Attachment?.files?.[0] || null;
   if (f) return f.type === "file" ? f.file.url : f.external.url;
-
   if (props?.["Image Source"]?.url) return props["Image Source"].url;
-
   const cover = page.cover;
   if (cover) return cover.type === "file" ? cover.file.url : cover.external.url;
   return null;
 }
-function pickDate(page, props = {}, dateKey) {
-  if (dateKey && props?.[dateKey]?.date?.start) return props[dateKey].date.start;
-  const guess = props?.Date?.date?.start || props?.Fecha?.date?.start ||
-                props?.Published?.date?.start || props?.["Publish Date"]?.date?.start;
-  return guess || page.created_time || page.last_edited_time || null;
+function pickVideo(page){
+  const props = page.properties || {};
+  const f = props?.Video?.files?.[0] || null;
+  if (!f) return null;
+  return f.type === "file" ? f.file.url : f.external.url;
 }
-function pickPlatform(props = {}, platformKey) {
-  if (platformKey) return props?.[platformKey]?.select?.name || null;
-  return props?.Platform?.select?.name || props?.Plataforma?.select?.name || null;
+function pickPlatforms(props = {}) {
+  const candidates = [props.Platforms, props.Platform, props.Plataformas, props.Plataforma];
+  const p = candidates.find(Boolean);
+  if (!p) return [];
+  if (p.type === "multi_select") return p.multi_select.map(o => o.name);
+  if (p.type === "select") return p.select ? [p.select.name] : [];
+  if (p.type === "rich_text") return p.rich_text.map(r => r.plain_text).filter(Boolean);
+  return [];
 }
-function pickStatus(props = {}, statusKey) {
-  if (statusKey) {
-    return props?.[statusKey]?.status?.name || props?.[statusKey]?.select?.name || null;
-  }
-  return (
-    props?.Status?.status?.name ||
-    props?.Status?.select?.name ||
-    props?.Estado?.status?.name ||
-    props?.Estado?.select?.name ||
-    null
-  );
+function pickStatus(props = {}) {
+  const candidates = [props.Status, props.Estado, props.State];
+  const s = candidates.find(Boolean);
+  if (!s) return null;
+  if (s.type === "select") return s.select ? s.select.name : null;
+  if (s.type === "rich_text") return s.rich_text?.[0]?.plain_text || null;
+  return null;
 }
 function pickPinned(props = {}) {
-  const pin =
-    props?.Pinned?.checkbox ||
-    props?.Destacado?.checkbox ||
-    false;
-  if (pin) return true;
-  const tags = props?.Tags?.multi_select || props?.Etiquetas?.multi_select || [];
-  return tags.some(t => /highlight|destacado|pin/i.test(t.name || ""));
+  const candidates = [props.Pinned, props.Pin, props.Star, props["⭐ Pin"]];
+  const c = candidates.find(Boolean);
+  return !!(c && c.checkbox === true);
 }
-
-async function notionFetch(url, options, token) {
-  const headers = {
-    Authorization: `Bearer ${token}`,
-    "Notion-Version": NOTION_VERSION,
-    "Content-Type": "application/json",
-  };
-  const res = await fetch(url, { ...options, headers });
-  const data = await res.json().catch(() => ({}));
-  return { res, data };
+function pickDate(props = {}) {
+  const candidates = [props.Date, props.Fecha, props.Published];
+  const d = candidates.find(Boolean);
+  return d?.date?.start || null;
+}
+function pickTags(props = {}) {
+  const candidates = [props.Tags, props.Labels, props.Etiquetas];
+  const t = candidates.find(Boolean);
+  if (!t) return [];
+  if (t.type === "multi_select") return t.multi_select.map(x=>x.name);
+  return [];
 }
 
 export default async function handler(req, res) {
@@ -72,66 +65,61 @@ export default async function handler(req, res) {
     const token = process.env.NOTION_TOKEN;
     const databaseId = process.env.NOTION_DATABASE_ID;
 
+    // Modo DEMO si faltan credenciales
     if (!token || !databaseId) {
-      // modo demo (sin romper)
       return res.status(200).json({
         items: [
-          { id:'d1', title:'Post Demo 1', image:'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=1200&q=60', date:'2024-02-25', platform:'Instagram', status:'Approved', link:null, pinned:true },
-          { id:'d2', title:'Post Demo 2', image:'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=1200&q=60', date:'2024-03-01', platform:'Instagram', status:'Draft', link:null, pinned:false },
-          { id:'d3', title:'Post Demo 3', image:'https://images.unsplash.com/photo-1520975922203-bc1cf35f1791?auto=format&fit=crop&w=1200&q=60', date:'2024-03-10', platform:'Instagram', status:'Approved', link:null, pinned:true }
-        ]
+          { id:"d1", title:"Post Demo 1", image:"https://images.unsplash.com/photo-1469474968028-56623f02e42e?q=80&w=1200&auto=format&fit=crop", link:null, platforms:["Instagram"], status:"Done", pinned:true, date:"2025-02-21", tags:["serum"] },
+          { id:"d2", title:"Post Demo 2", image:"https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=1200&auto=format&fit=crop", link:null, platforms:["Tiktok"], status:"In progress", pinned:false, date:"2025-02-19", tags:["30 serum"] },
+          { id:"d3", title:"Post Demo 3", image:"https://images.unsplash.com/photo-1517841905240-472988babdf9?q=80&w=1200&auto=format&fit=crop", link:null, platforms:["Others"], status:"Not started", pinned:false, date:"2025-02-17", tags:["cream"] },
+        ],
       });
     }
 
-    // 1) Leemos metadata para detectar nombres reales de propiedades
-    const { res: metaRes, data: meta } = await notionFetch(
-      `https://api.notion.com/v1/databases/${databaseId}`,
-      { method: "GET" },
-      token
-    );
-    if (!metaRes.ok) {
-      return res.status(metaRes.status).json({ error: "Notion meta error", detail: meta });
-    }
-    const props = meta.properties || {};
-    const keys = Object.keys(props);
-
-    const dateKey = keys.find(k => props[k]?.type === "date" && /^(date|fecha|published|publish date)$/i.test(k)) ||
-                    keys.find(k => props[k]?.type === "date"); // fallback: primer date
-
-    const platformKey = keys.find(k => props[k]?.type === "select" && /^(platform|plataforma)$/i.test(k));
-    // status puede ser "status" o "select"
-    const statusKey = keys.find(k => /^(status|estado)$/i.test(k) && (props[k]?.type === "status" || props[k]?.type === "select"));
-
-    // 2) Query con sort solo si tenemos dateKey
-    const body = dateKey ? { page_size: 100, sorts: [{ property: dateKey, direction: "descending" }] }
-                         : { page_size: 100 };
-
-    const { res: qRes, data: qData } = await notionFetch(
+    const response = await fetch(
       `https://api.notion.com/v1/databases/${databaseId}/query`,
-      { method: "POST", body: JSON.stringify(body) },
-      token
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Notion-Version": NOTION_VERSION,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          page_size: 100,
+          sorts: [{ timestamp: "last_edited_time", direction: "descending" }],
+        }),
+      }
     );
-    if (!qRes.ok) {
-      return res.status(qRes.status).json({ error: "Notion query error", detail: qData });
+
+    const data = await response.json();
+    if (!response.ok) {
+      return res.status(response.status).json({
+        error: "Notion error",
+        detail: data,
+        message: "Verifica que la integración tenga acceso a la base de datos",
+      });
     }
 
-    const items = (qData.results || []).map(page => {
-      const p = page.properties || {};
+    const items = (data.results || []).map((page) => {
+      const props = page.properties || {};
       return {
         id: page.id,
-        title: pickTitle(p),
+        title: pickTitle(props),
         image: pickImage(page),
-        link: pickLink(p),
-        date: pickDate(page, p, dateKey),
-        platform: pickPlatform(p, platformKey),
-        status: pickStatus(p, statusKey),
-        pinned: pickPinned(p)
+        video: pickVideo(page),
+        link: pickLink(props),
+        platforms: pickPlatforms(props),   // ["Instagram","Tiktok","Others"]
+        status: pickStatus(props),         // "Not started" | "In progress" | "Done"
+        pinned: pickPinned(props),         // true/false
+        date: pickDate(props),             // ISO
+        tags: pickTags(props),             // ["serum","cream",...]
       };
     });
 
-    res.status(200).json({ items });
-  } catch (e) {
-    console.error("API /api/grid error:", e);
-    res.status(500).json({ error: "Server error", detail: String(e) });
+    res.status(200).json({ items, count: items.length });
+  } catch (error) {
+    console.error("Error /api/grid:", error);
+    res.status(500).json({ error: "Server error", detail: error.message });
   }
 }
