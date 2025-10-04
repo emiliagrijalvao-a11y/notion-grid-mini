@@ -1,419 +1,251 @@
 <!doctype html>
 <html lang="es">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Notion Grid Widget</title>
   <style>
     :root{
-      --container: 936px;
-      --gap: 2px;
-      --cols: 3;
-      --ink:#111; --muted:#69707a; --line:rgba(0,0,0,.08); --ghost:#f5f5f5;
-      --overlay: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,.55) 100%);
+      --bg:#ffffff; --text:#111; --muted:#6b7280; --border:#e6e6e6;
+      --chip:#f3f4f6; --chip-text:#111; --link-dark:#1c2f7a;
+      --bio-avatar-size:84px;
     }
     *{box-sizing:border-box}
-    html,body{margin:0;background:#fff;color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,Helvetica,Arial}
+    html,body{background:var(--bg);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Inter;line-height:1.45}
     a{color:inherit;text-decoration:none}
-    button{font:inherit}
-    .wrap{max-width:var(--container); margin:0 auto; padding:16px 12px 40px;}
+    .wrap{max-width:1120px;margin:0 auto;padding:16px}
+    .toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;position:relative}
+    button{cursor:pointer}
+    #btnRefresh{padding:10px 14px;border-radius:12px;border:1px solid var(--border);background:#111;color:#fff;font-weight:700}
+    .controls{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+    .dd{position:relative}
+    .dd>button{padding:10px 14px;border:1px solid #dcdcdc;background:#fff;border-radius:12px;font-weight:600}
+    .dd-menu{position:absolute;top:48px;left:0;min-width:220px;background:#fff;border:1px solid #e6e6e6;border-radius:12px;box-shadow:0 10px 24px rgba(0,0,0,.08);display:none;z-index:10}
+    .dd.open .dd-menu{display:block}
+    .dd-menu button{display:block;width:100%;padding:10px 14px;text-align:left;background:#fff;border:0}
+    .dd-menu button:hover{background:#f6f6f6}
 
-    /* topbar */
-    .topbar{display:flex;align-items:center;gap:10px;padding:4px 0 12px;}
-    .iconbtn{display:inline-flex;align-items:center;gap:8px;border:none;background:#111;color:#fff;padding:10px 14px;border-radius:12px;cursor:pointer}
-    .iconbtn .spin{display:inline-block;transition:transform .6s linear}
-    .iconbtn.loading .spin{transform:rotate(360deg)}
-    .ghost{background:var(--ghost);color:#111}
-    .more{width:40px;height:40px;border-radius:12px;display:inline-grid;place-items:center}
-    .topbar-spacer{flex:1}
+    .btn-ellipsis{width:36px;height:36px;border-radius:12px;background:#f3f3f3;border:1px solid #d9d9d9;display:inline-flex;align-items:center;justify-content:center}
+    .btn-ellipsis i{width:6px;height:6px;border-radius:50%;background:#333;box-shadow:10px 0 0 #333, -10px 0 0 #333}
 
-    /* ❌ ocultamos el icono de grid */
-    .grid-ico{display:none!important}
+    .bio-card{position:absolute;top:72px;right:16px;width:360px;max-width:90vw;background:#fff;border:1px solid #eaeaea;border-radius:16px;padding:16px;box-shadow:0 10px 30px rgba(0,0,0,.08);display:none}
+    .bio-card.open{display:block}
+    .switch{position:relative;display:inline-flex;align-items:center;gap:10px}
+    .switch input{display:none}
+    .switch .track{width:46px;height:26px;border-radius:999px;background:#111;position:relative}
+    .switch .dot{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:left .2s}
+    .switch input:not(:checked)+.track{background:#d1d1d1}
+    .switch input:not(:checked)+.track .dot{left:23px}
+    .bio-head{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+    .bio-avatar{width:var(--bio-avatar-size);height:var(--bio-avatar-size);border-radius:999px;object-fit:cover;background:#eee;flex:0 0 var(--bio-avatar-size)}
+    .bio-username{font-size:22px;font-weight:800;line-height:1.1}
+    .bio-name{font-weight:600;margin-top:2px}
+    .bio-text{margin:10px 0 8px;white-space:pre-line}
+    .bio-link a{color:var(--link-dark);text-decoration:underline}
+    .tip{font-size:12.5px;color:#6b6b6b;line-height:1.35}
 
-    /* filtros (plegable) */
-    .filters{overflow:hidden;max-height:0;transition:max-height .25s ease;border-bottom:1px solid var(--line)}
-    .filters.open{max-height:380px}
-    .filters-inner{display:grid;grid-template-columns:1fr;gap:12px;padding:8px 0 12px}
-    .chipbar{display:flex;gap:12px;flex-wrap:wrap}
-    .chip{display:inline-flex;align-items:center;gap:8px;background:#f5f5f5;border:1px solid var(--line);border-radius:12px;padding:10px 12px;user-select:none}
-    .chip .count{color:var(--muted);font-weight:600}
-    .group{padding:4px 2px}
-    .group h4{margin:0 0 6px 2px;font-size:13px;color:#555}
-    .options{display:flex;flex-wrap:wrap;gap:8px}
-    .pill{border:1px solid var(--line);padding:8px 12px;border-radius:999px;cursor:pointer}
-    .pill.active{background:#111;color:#fff;border-color:#111}
-
-    /* grid */
-    .grid{margin-top:12px;display:grid;grid-template-columns:repeat(var(--cols),1fr);gap:var(--gap)}
-    .card{position:relative;aspect-ratio:4/5;background:#eaeaea;overflow:hidden}
-    .card img,.card video{width:100%;height:100%;object-fit:cover;display:block}
-
-    /* overlay hover: título + fecha */
-    .meta-overlay{position:absolute;inset:auto 0 0 0;background:var(--overlay);padding:10px 12px;
-      display:flex;justify-content:space-between;align-items:flex-end;color:#fff;opacity:0;transform:translateY(8px);
-      transition:.15s ease;font-weight:600;font-size:15px}
-    .card:hover .meta-overlay{opacity:1;transform:translateY(0)}
-
-    /* icons arriba derecha */
-    .meta-icons{position:absolute;top:8px;right:8px;display:flex;gap:6px;pointer-events:none}
-    .icon{width:22px;height:22px;display:grid;place-items:center;background:rgba(0,0,0,.6);color:#fff;border-radius:6px;font-size:12px}
-    .icon[hidden]{display:none!important}
-
-    /* menú ... */
-    .menu{position:relative}
-    .menu-panel{position:absolute;right:0;top:44px;min-width:240px;background:#fff;border:1px solid var(--line);
-      border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.08);padding:10px;display:none}
-    .menu.open .menu-panel{display:block}
-    .menu-row{display:flex;align-items:center;justify-content:space-between;padding:10px;border-radius:10px}
-    .menu-row:hover{background:#f7f7f8}
-    .switch{width:40px;height:24px;background:#e5e7eb;border-radius:999px;position:relative;transition:.2s}
-    .switch::after{content:"";position:absolute;top:2px;left:2px;width:20px;height:20px;background:#fff;border-radius:999px;transition:.2s;box-shadow:0 1px 2px rgba(0,0,0,.2)}
-    .switch.on{background:#111}.switch.on::after{left:18px}
-    .menu-note{font-size:13px;color:#6b7280;padding:8px 10px 6px;border-top:1px solid var(--line);margin-top:6px}
-
-    /* lightbox */
-    .lightbox{position:fixed;inset:0;background:rgba(0,0,0,.75);display:none;align-items:center;justify-content:center;padding:24px;z-index:50}
-    .lightbox.open{display:flex}
-    .lightbox-inner{max-width:min(800px,90vw);max-height:90vh}
-    .lightbox-figure img,.lightbox-figure video{width:100%;height:auto;max-height:80vh;object-fit:contain;display:block;background:#000}
-    .lightbox-caption{color:#fff;font-size:14px;line-height:1.45;padding:10px 4px 0}
-
-    /* placeholders */
-    .placeholder{background:#efefef;color:#9aa1a8;display:grid;place-items:center;font-weight:600}
-
-    /* bio/highlights */
-    .bio,.highlights{display:none}
-    .bio.show,.highlights.show{display:block;padding:12px 2px;border-bottom:1px solid var(--line);color:#32363a}
-    .bio-row{display:flex;align-items:center;gap:10px}
-    .bio-avatar{width:36px;height:36px;border-radius:50%;object-fit:cover;border:1px solid var(--line)}
-    .hl-bullets{display:flex;gap:10px;flex-wrap:wrap;font-size:14px;color:#39414a}
-    .hl-bullets b{font-weight:700}
+    /* Grid */
+    .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px}
+    @media (max-width:920px){.grid{grid-template-columns:repeat(2,1fr)}}
+    @media (max-width:560px){.grid{grid-template-columns:1fr}}
+    .card{position:relative;background:#f3f3f3;border:1px solid var(--border);border-radius:12px;overflow:hidden;aspect-ratio:1/1}
+    .card img, .card video{width:100%;height:100%;object-fit:cover;display:block}
+    .pin{position:absolute;top:8px;right:8px;width:26px;height:26px;border-radius:8px;background:rgba(255,255,255,.95);border:1px solid #ddd;display:flex;align-items:center;justify-content:center}
+    .pin:before{content:"📌";font-size:16px}
+    .play{position:absolute;bottom:10px;left:10px;width:28px;height:28px;border-radius:8px;background:rgba(0,0,0,.75);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px}
   </style>
 </head>
 <body>
   <div class="wrap">
-    <!-- (opcional) Bio & Highlights -->
-    <div id="bio" class="bio"></div>
-    <div id="highlights" class="highlights"></div>
 
-    <!-- Topbar -->
-    <div class="topbar">
-      <button id="refreshBtn" class="iconbtn"><span class="grid-ico"></span><span class="spin">↻</span> Refresh</button>
-      <button id="filtersBtn" class="iconbtn ghost" title="Filtros">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="M4 7h10m-8 0a2 2 0 1 0 4 0 2 2 0 1 0-4 0Zm0 10h14m-8 0a2 2 0 1 0 4 0 2 2 0 1 0-4 0Z" stroke="#111" stroke-width="2" stroke-linecap="round"/>
-        </svg>
-      </button>
-      <div class="topbar-spacer"></div>
-      <div id="menu" class="menu">
-        <button id="menuBtn" class="iconbtn ghost more" title="Más"><strong>…</strong></button>
-        <div class="menu-panel">
-          <div class="menu-row"><span>Show Bio</span><div id="bioSwitch" class="switch" role="switch" aria-checked="false"></div></div>
-          <div class="menu-row"><span>Show Highlights</span><div id="hlSwitch" class="switch" role="switch" aria-checked="false"></div></div>
-          <div class="menu-note">This preview usa datos falsos si no hay ENV. Para personalizar, añade BIO_NAME / BIO_TEXT / BIO_URL en Vercel.</div>
+    <!-- Barra superior -->
+    <div class="toolbar">
+      <div class="controls">
+        <button id="btnRefresh">Refresh</button>
+
+        <div class="dd" id="ddPlatforms">
+          <button id="btnPlatforms">All Platforms ▾</button>
+          <div class="dd-menu">
+            <button data-platform="all">All Platforms</button>
+            <button data-platform="Instagram">Instagram</button>
+            <button data-platform="Tik Tok">Tik Tok</button>
+            <button data-platform="Other">Other</button>
+          </div>
+        </div>
+
+        <div class="dd" id="ddStatus">
+          <button id="btnStatus">All Status ▾</button>
+          <div class="dd-menu">
+            <button data-status="all">All Status</button>
+            <button data-status="Idea">Idea</button>
+            <button data-status="Draft">Draft</button>
+            <button data-status="In progress">In progress</button>
+            <button data-status="Done">Done</button>
+          </div>
         </div>
       </div>
-    </div>
 
-    <!-- Filtros (plegable) -->
-    <div id="filters" class="filters">
-      <div class="filters-inner">
-        <div class="chipbar">
-          <div class="chip">All Platforms <span class="count" id="platformCount"></span></div>
-          <div class="chip">All Status <span class="count" id="statusCount"></span></div>
+      <button id="btnBio" class="btn-ellipsis" aria-label="Open Bio"><i></i></button>
+
+      <!-- Bio -->
+      <div id="bioCard" class="bio-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div class="switch">
+            <label style="font-weight:700">Show Bio</label>
+            <input id="toggleBio" type="checkbox" checked />
+            <div class="track"><div class="dot"></div></div>
+          </div>
         </div>
-        <div class="group">
-          <h4>Platforms</h4>
-          <div id="platformOptions" class="options"></div>
+
+        <div class="bio-head">
+          <img id="bioAvatar" class="bio-avatar" alt=""/>
+          <div>
+            <div id="bioUsername" class="bio-username">@your_username</div>
+            <div id="bioName" class="bio-name">Grid Content Planner</div>
+          </div>
         </div>
-        <div class="group">
-          <h4>Status</h4>
-          <div id="statusOptions" class="options"></div>
+
+        <div id="bioText" class="bio-text">Welcome to Flujo Creativo / widget ☁️
+🖼 IG grid planner for your feed
+Inquire below ↓</div>
+        <div class="bio-link"><a id="bioUrl" href="#" target="_blank" rel="noopener">websitelink.com</a></div>
+
+        <hr style="margin:14px 0">
+        <div class="tip">
+          Want to customize your bio or highlights? Go to your Account page, find your widget, click Edit.
         </div>
       </div>
     </div>
 
     <!-- Grid -->
-    <div id="grid" class="grid" aria-live="polite" aria-busy="false"></div>
+    <div id="grid" class="grid"></div>
   </div>
 
-  <!-- Lightbox -->
-  <div id="lightbox" class="lightbox" aria-modal="true" role="dialog">
-    <div class="lightbox-inner">
-      <div class="lightbox-figure" id="lbFigure"></div>
-      <div class="lightbox-caption" id="lbCaption"></div>
-    </div>
-  </div>
+<script>
+// ------------ Dropdowns ------------
+function setupDropdown(ddId, btnId){
+  const dd = document.getElementById(ddId);
+  const btn = document.getElementById(btnId);
+  btn.addEventListener('click', (e)=>{ e.stopPropagation(); dd.classList.toggle('open'); });
+}
+setupDropdown('ddPlatforms','btnPlatforms');
+setupDropdown('ddStatus','btnStatus');
+document.addEventListener('click', ()=> {
+  document.querySelectorAll('.dd.open').forEach(el=>el.classList.remove('open'));
+});
 
-  <script>
-  (() => {
-    const gridEl = document.getElementById("grid");
-    const refreshBtn = document.getElementById("refreshBtn");
-    const filtersBtn = document.getElementById("filtersBtn");
-    const filtersEl  = document.getElementById("filters");
-    const menu       = document.getElementById("menu");
-    const menuBtn    = document.getElementById("menuBtn");
-    const bioSwitch  = document.getElementById("bioSwitch");
-    const hlSwitch   = document.getElementById("hlSwitch");
-    const bioEl      = document.getElementById("bio");
-    const hlEl       = document.getElementById("highlights");
-    const platformOptions = document.getElementById("platformOptions");
-    const statusOptions   = document.getElementById("statusOptions");
-    const platformCount   = document.getElementById("platformCount");
-    const statusCount     = document.getElementById("statusCount");
+// --------- Estado de filtros ---------
+let RAW_ITEMS = [];
+let currentPlatform = 'all';
+let currentStatus = 'all';
 
-    let selectedPlatforms = [];
-    let selectedStatus = [];
-    let dataset = [];
-    const LIMIT = 12;
+window.filterByPlatform = (v)=>{
+  currentPlatform = v;
+  document.getElementById('btnPlatforms').textContent = (v==='all'?'All Platforms':v)+' ▾';
+  renderGrid();
+};
+window.filterByStatus = (v)=>{
+  currentStatus = v;
+  document.getElementById('btnStatus').textContent = (v==='all'?'All Status':v)+' ▾';
+  renderGrid();
+};
 
-    const state = { bio: null };
+// Menu clicks
+document.querySelectorAll('#ddPlatforms .dd-menu button').forEach(b=>{
+  b.addEventListener('click', ()=> window.filterByPlatform(b.dataset.platform || 'all'));
+});
+document.querySelectorAll('#ddStatus .dd-menu button').forEach(b=>{
+  b.addEventListener('click', ()=> window.filterByStatus(b.dataset.status || 'all'));
+});
 
-    const fmtDate = (iso) => {
-      if (!iso) return "";
-      try { return new Date(iso).toLocaleDateString("en-US",{month:"short",day:"numeric"}); }
-      catch { return ""; }
-    };
+// ------------- BIO panel -------------
+const bioCard = document.getElementById('bioCard');
+document.getElementById('btnBio').addEventListener('click', (e)=>{ e.stopPropagation(); bioCard.classList.toggle('open'); });
+document.addEventListener('click', ()=> bioCard.classList.remove('open'));
+document.getElementById('toggleBio').addEventListener('change', (e)=>{
+  const on = e.target.checked;
+  bioCard.querySelector('.bio-head').style.display = on?'flex':'none';
+  bioCard.querySelector('#bioText').style.display = on?'block':'none';
+  bioCard.querySelector('.bio-link').style.display = on?'block':'none';
+});
 
-    const setLoading = (on) => {
-      gridEl.setAttribute("aria-busy", String(on));
-      refreshBtn.classList.toggle("loading", !!on);
-    };
+// Carga ENV para Bio
+(async function loadBio(){
+  try{
+    const r = await fetch('/api/health');
+    const h = await r.json();
+    document.getElementById('bioUsername').textContent = h.bioUsername || '@flujocreativo';
+    document.getElementById('bioName').textContent     = h.bioName || 'Grid Content Planner';
 
-    const buildQuery = () => {
-      const p = new URLSearchParams();
-      if (selectedPlatforms.length) p.set("platform", selectedPlatforms.join(","));
-      if (selectedStatus.length)    p.set("status", selectedStatus.join(","));
-      p.set("limit", String(LIMIT));
-      return p.toString() ? "/api/grid?"+p.toString() : "/api/grid";
-    };
+    const txt = h.bioText || 'Welcome to Flujo Creativo / widget ☁️\n🖼 IG grid planner for your feed\nInquire below ↓';
+    document.getElementById('bioText').textContent = txt;
 
-    async function loadHealth(){
-      try{
-        const r = await fetch("/api/health", { cache:"no-store" });
-        const j = await r.json();
-        if (j && j.ok){
-          state.bio = {
-            name: j.bioName || "",
-            text: j.bioText || "",
-            url:  j.bioUrl  || "",
-            avatar: j.bioAvatar || ""
-          };
-        }
-      }catch(e){}
+    const a = document.getElementById('bioUrl');
+    const url = h.bioUrl || 'https://websitelink.com';
+    a.href = url;
+    a.textContent = url.replace(/^https?:\/\//,'');
+    const img = document.getElementById('bioAvatar');
+    if(h.bioAvatar){ img.src = h.bioAvatar; img.style.display='block'; } else { img.style.display='none'; }
+  }catch(_){}
+})();
+
+// --------------- GRID ---------------
+function renderGrid(){
+  const wrap = document.getElementById('grid');
+  wrap.innerHTML = "";
+  const filtered = RAW_ITEMS.filter(it=>{
+    const p = currentPlatform==='all' || it.platform===currentPlatform || it.platforms?.includes(currentPlatform);
+    const s = currentStatus==='all' || (it.status||'')===currentStatus;
+    return p && s;
+  });
+
+  for(const it of filtered){
+    const card = document.createElement('a');
+    card.className = 'card';
+    card.href = it.link || '#';
+    card.target = it.link ? '_blank' : '_self';
+    card.rel = 'noopener';
+
+    if (it.isVideo) {
+      const v = document.createElement('img');
+      v.alt = it.title || '';
+      v.src = it.image || 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
+      card.appendChild(v);
+      const play = document.createElement('div');
+      play.className = 'play';
+      play.textContent = '▶';
+      card.appendChild(play);
+    } else {
+      const img = document.createElement('img');
+      img.alt = it.title || '';
+      img.loading = 'lazy';
+      img.src = it.image || 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
+      card.appendChild(img);
     }
 
-    function populateBio(){
-      if (!bioEl) return;
-      bioEl.innerHTML = "";
-      const has = state.bio && (state.bio.name || state.bio.text || state.bio.url || state.bio.avatar);
-      if (has){
-        const row = document.createElement("div");
-        row.className = "bio-row";
-        if (state.bio.avatar){
-          const img = document.createElement("img");
-          img.className = "bio-avatar";
-          img.src = state.bio.avatar;
-          img.alt = state.bio.name || "avatar";
-          row.appendChild(img);
-        }
-        const txt = document.createElement("div");
-        const name = state.bio.name ? `<b>${state.bio.name}</b>` : "@your_username";
-        const link = state.bio.url ? ` · <a href="${state.bio.url}" target="_blank" rel="noopener">link</a>` : "";
-        const desc = state.bio.text || "short bio here…";
-        txt.innerHTML = `${name}${link}<br>${desc}`;
-        row.appendChild(txt);
-        bioEl.appendChild(row);
-      } else {
-        bioEl.textContent = "@your_username · Your Display Name — short bio here…";
-      }
+    if (it.pinned) {
+      const pin = document.createElement('div');
+      pin.className = 'pin';
+      card.appendChild(pin);
     }
 
-    function computeHighlights(items){
-      const total = items.length;
-      const pinned = items.filter(it => it.pinned).length;
-      const plats = [...new Set(items.flatMap(it => it.platforms || []))];
-      const topPlats = plats.slice(0,5).join(", ") || "—";
-      const lastTs = Math.max(0, ...items.map(it => it.publishDate ? Date.parse(it.publishDate) : 0));
-      const lastStr = lastTs ? new Date(lastTs).toLocaleDateString("en-US",{month:"short",day:"numeric"}) : "";
-      hlEl.innerHTML = `
-        <div class="hl-bullets">
-          <span><b>${total}</b> items</span>
-          <span><b>${pinned}</b> pinned</span>
-          <span>Platforms: <b>${topPlats}</b></span>
-          ${lastStr ? `<span>Updated: <b>${lastStr}</b></span>` : ""}
-        </div>
-      `;
-    }
+    wrap.appendChild(card);
+  }
+}
 
-    async function loadGrid(){
-      setLoading(true);
-      try{
-        const r = await fetch(buildQuery(), { cache:"no-store" });
-        const json = await r.json();
-        if (!json.ok) throw new Error(json.error || "API error");
-        dataset = json.items || [];
-        renderGrid(dataset);
-        buildFilterLists(dataset);
-        updateCounts();
-        computeHighlights(dataset);
-      }catch(e){
-        renderNoContent();
-        console.error(e);
-      }finally{
-        setLoading(false);
-      }
-    }
+async function loadGrid(){
+  const r = await fetch('/api/grid');
+  const data = await r.json();
+  RAW_ITEMS = data.items || [];
+  renderGrid();
+}
+window.reloadGrid = loadGrid;
 
-    function renderNoContent(){
-      gridEl.innerHTML = "";
-      for (let i=0;i<LIMIT;i++){
-        const ph = document.createElement("div");
-        ph.className = "card placeholder";
-        ph.textContent = "No Content";
-        gridEl.appendChild(ph);
-      }
-    }
+document.getElementById('btnRefresh').addEventListener('click', ()=> {
+  (window.reloadGrid && window.reloadGrid()) || location.reload();
+});
 
-    function renderGrid(items){
-      gridEl.innerHTML = "";
-      if (!items.length){ renderNoContent(); return; }
-
-      items.forEach((it) => {
-        const card = document.createElement("div");
-        card.className = "card";
-        card.dataset.id = it.id;
-
-        // Media
-        if (it.media?.kind === "video"){
-          const vid = document.createElement("video");
-          vid.src = it.media.url;
-          vid.muted = true; vid.loop = true; vid.playsInline = true; vid.preload = "none";
-          card.appendChild(vid);
-          card.addEventListener("mouseenter", ()=>{ vid.play().catch(()=>{}); });
-          card.addEventListener("mouseleave", ()=>{ try{ vid.pause(); vid.currentTime = 0; }catch{} });
-        } else {
-          const img = document.createElement("img");
-          img.src = it.media?.url || "";
-          img.alt = it.title || "";
-          img.loading = "lazy";
-          card.appendChild(img);
-        }
-
-        // Overlay hover: Title + Date
-        const meta = document.createElement("div");
-        meta.className = "meta-overlay";
-        const title = document.createElement("span");
-        title.textContent = it.title || "";
-        const date = document.createElement("span");
-        date.textContent = fmtDate(it.publishDate);
-        meta.appendChild(title); meta.appendChild(date);
-        card.appendChild(meta);
-
-        // Icons (pin / play)
-        const icons = document.createElement("div");
-        icons.className = "meta-icons";
-        const pin = document.createElement("span");
-        pin.className = "icon"; pin.textContent = "📌"; if (!it.pinned) pin.hidden = true;
-        const play = document.createElement("span");
-        play.className = "icon"; play.textContent = "▶"; if (it.media?.kind !== "video") play.hidden = true;
-        icons.appendChild(pin); icons.appendChild(play);
-        card.appendChild(icons);
-
-        // Lightbox
-        card.addEventListener("click", () => openLightbox(it));
-
-        gridEl.appendChild(card);
-      });
-    }
-
-    // Lightbox
-    const lb = document.getElementById("lightbox");
-    const lbFigure = document.getElementById("lbFigure");
-    const lbCaption= document.getElementById("lbCaption");
-
-    function openLightbox(it){
-      lbFigure.innerHTML = "";
-      if (it.media?.kind === "video"){
-        const v = document.createElement("video");
-        v.src = it.media.url; v.controls = true; v.autoplay = true; v.playsInline = true;
-        lbFigure.appendChild(v);
-      } else {
-        const i = document.createElement("img");
-        i.src = it.media?.url || ""; i.alt = it.title || "";
-        lbFigure.appendChild(i);
-      }
-      lbCaption.textContent = it.caption || "";
-      lb.classList.add("open");
-    }
-    lb.addEventListener("click",(e)=>{ if (e.target === lb) lb.classList.remove("open"); });
-
-    // Filtros
-    filtersBtn.addEventListener("click", ()=> filtersEl.classList.toggle("open"));
-
-    function buildFilterLists(items){
-      // Platforms
-      const pset = new Set(items.flatMap(it => it.platforms || []));
-      platformOptions.innerHTML = "";
-      [...pset].sort().forEach(name => {
-        const pill = document.createElement("button");
-        pill.type = "button";
-        pill.className = "pill"+(selectedPlatforms.includes(name) ? " active":"");
-        pill.textContent = name;
-        pill.addEventListener("click", ()=>{
-          const i = selectedPlatforms.indexOf(name);
-          if (i>=0) selectedPlatforms.splice(i,1); else selectedPlatforms.push(name);
-          loadGrid();
-        });
-        platformOptions.appendChild(pill);
-      });
-
-      // Status
-      const sset = new Set(items.map(it => it.status).filter(Boolean));
-      statusOptions.innerHTML = "";
-      [...sset].sort().forEach(name => {
-        const pill = document.createElement("button");
-        pill.type = "button";
-        pill.className = "pill"+(selectedStatus.includes(name) ? " active":"");
-        pill.textContent = name;
-        pill.addEventListener("click", ()=>{
-          const i = selectedStatus.indexOf(name);
-          if (i>=0) selectedStatus.splice(i,1); else selectedStatus.push(name);
-          loadGrid();
-        });
-        statusOptions.appendChild(pill);
-      });
-    }
-
-    function updateCounts(){
-      platformCount.textContent = selectedPlatforms.length ? `(${selectedPlatforms.length})` : "";
-      statusCount.textContent   = selectedStatus.length ? `(${selectedStatus.length})` : "";
-    }
-
-    // Menú …
-    menuBtn.addEventListener("click", ()=> menu.classList.toggle("open"));
-    document.addEventListener("click",(e)=>{ if(!menu.contains(e.target) && e.target!==menuBtn) menu.classList.remove("open"); });
-
-    const toggle = (el,on,target)=>{ el.classList.toggle("on",on); el.setAttribute("aria-checked",String(on)); if (target) target.classList.toggle("show",on); };
-
-    bioSwitch.addEventListener("click", ()=>{
-      const on=!bioSwitch.classList.contains("on");
-      toggle(bioSwitch,on,bioEl);
-      if(on){ populateBio(); }
-    });
-
-    hlSwitch.addEventListener("click",  ()=>{
-      const on=!hlSwitch.classList.contains("on");
-      toggle(hlSwitch,on,hlEl);
-      if(on){ computeHighlights(dataset); }
-    });
-
-    // inicio
-    refreshBtn.addEventListener("click", loadGrid);
-    // Carga paralela de /api/health y de la grid
-    loadHealth();
-    loadGrid();
-  })();
-  </script>
+loadGrid();
+</script>
 </body>
 </html>
