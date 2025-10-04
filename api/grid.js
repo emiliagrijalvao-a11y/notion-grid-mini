@@ -63,6 +63,15 @@ async function queryAll(databaseId, token) {
   return results;
 }
 
+// --- Normaliza BIO_TEXT (acepta "\n" literales o saltos reales) ---
+function normalizeBioText(raw = "") {
+  if (!raw) return [];
+  const parts = (raw.includes("\\n") ? raw.split("\\n") : raw.split("\n"))
+    .map(s => s.replace(/\r/g, "").trim())
+    .filter(Boolean);
+  return parts;
+}
+
 export default async function handler(req, res) {
   try {
     const token = process.env.NOTION_TOKEN;
@@ -74,42 +83,51 @@ export default async function handler(req, res) {
     const bio = {
       username: process.env.BIO_USERNAME || "@your_username",
       name: process.env.BIO_NAME || "Grid Content Planner",
-      textLines: (process.env.BIO_TEXT || "")
-        .split("\n").map(s => s.trim()).filter(Boolean),
+      textLines: normalizeBioText(process.env.BIO_TEXT || ""),
       url: process.env.BIO_URL || "https://websitelink.com",
       avatar: process.env.BIO_AVATAR || "",
     };
 
     const pages = await queryAll(db, token);
 
-    const raw = pages.map((page) => {
-      const p = page.properties || {};
-      if (isHidden(p)) return null;
+    const raw = pages
+      .map((page) => {
+        const p = page.properties || {};
+        if (isHidden(p)) return null;
 
-      const pinned = getCheckbox(p, "Pinned") || getCheckbox(p, "Pin") || false;
-      const platform =
-        getSelect(p, "Platform") || getSelect(p, "Plataform") || getSelect(p, "Plataforma") || "Other";
-      const status =
-        getSelect(p, "Status") || getSelect(p, "Estado") || null;
+        const pinned =
+          getCheckbox(p, "Pinned") || getCheckbox(p, "Pin") || false;
 
-      return {
-        id: page.id,
-        title: getTitle(p),
-        platform,
-        status,
-        pinned,
-        image: getImage(p),
-        link: getLink(p) || null,
-        _edited: page.last_edited_time || page.created_time,
-      };
-    }).filter(Boolean);
+        const platform =
+          getSelect(p, "Platform") ||
+          getSelect(p, "Plataform") ||
+          getSelect(p, "Plataforma") ||
+          "Other";
+
+        const status =
+          getSelect(p, "Status") ||
+          getSelect(p, "Estado") ||
+          null;
+
+        return {
+          id: page.id,
+          title: getTitle(p),
+          platform,
+          status,
+          pinned,
+          image: getImage(p),
+          link: getLink(p) || null,
+          _edited: page.last_edited_time || page.created_time,
+        };
+      })
+      .filter(Boolean);
 
     raw.sort((a, b) => {
       if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
       return new Date(b._edited) - new Date(a._edited);
     });
-    const items = raw.map(({ _edited, ...x }) => x);
 
+    const items = raw.map(({ _edited, ...x }) => x);
     const platforms = Array.from(new Set(items.map(i => i.platform).filter(Boolean)));
     const statuses  = Array.from(new Set(items.map(i => i.status).filter(Boolean)));
 
