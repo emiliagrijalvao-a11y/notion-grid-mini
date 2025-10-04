@@ -1,186 +1,128 @@
-// /api/grid.js
-// Devuelve los ítems de tu base de Notion listos para el grid.
-// Requiere env: NOTION_TOKEN, NOTION_DATABASE_ID
-
+// api/grid.js
 const NOTION_VERSION = "2022-06-28";
 
-function pickTitle(props = {}) {
-  const name =
-    props?.Name?.title?.[0]?.plain_text ??
-    props?.Title?.rich_text?.[0]?.plain_text ??
-    props?.["Post Title"]?.title?.[0]?.plain_text ??
-    props?.["Title"]?.title?.[0]?.plain_text ??
-    "";
-  const caption =
-    props?.Caption?.rich_text?.[0]?.plain_text ??
-    props?.["Title Rt"]?.rich_text?.[0]?.plain_text ??
-    "";
-  return name || caption || "Sin título";
-}
+const getTitle = (p) =>
+  p?.Name?.title?.[0]?.plain_text ??
+  p?.Title?.title?.[0]?.plain_text ??
+  "Untitled";
 
-function pickLink(props = {}) {
-  return (
-    props?.Link?.url ??
-    props?.URL?.url ??
-    props?.["Post URL"]?.url ??
-    null
-  );
-}
+const getLink = (p) =>
+  p?.Link?.url || p?.URL?.url || p?.Url?.url || null;
 
-function fileUrl(f) {
+const fileUrl = (f) => {
   if (!f) return null;
   if (f.type === "file") return f.file?.url || null;
-  return f.external?.url || null;
-}
-
-function pickImage(page = {}) {
-  const props = page?.properties || {};
-  // Prioridad: Image / Cover / Attachment
-  const f =
-    props?.Image?.files?.[0] ??
-    props?.Cover?.files?.[0] ??
-    props?.Attachment?.files?.[0] ??
-    null;
-
-  if (f) {
-    return fileUrl(f);
-  }
-
-  // Propiedad URL directa
-  if (props?.["Image Source"]?.url) return props["Image Source"].url;
-
-  // Cover del page
-  const cover = page?.cover;
-  if (cover) {
-    return cover.type === "file" ? cover.file?.url : cover.external?.url;
-  }
+  if (f.type === "external") return f.external?.url || null;
   return null;
-}
+};
 
-function pickPlatforms(props = {}, link) {
-  // multi_select o select
-  const ms = props?.Platform?.multi_select || props?.Platforms?.multi_select;
-  if (Array.isArray(ms) && ms.length) return ms.map((x) => x?.name).filter(Boolean);
+const getImage = (p) =>
+  fileUrl(p?.Image?.files?.[0] || p?.Attachment?.files?.[0] || p?.Cover?.files?.[0]);
 
-  const sel = props?.Platform?.select || props?.Status?.select;
-  if (sel?.name) return [sel.name];
+const getSelect = (p, key) => p?.[key]?.select?.name ?? null;
+const getCheckbox = (p, key) => !!p?.[key]?.checkbox;
 
-  // Inferencia por URL
-  if (link?.includes("instagram.com")) return ["Instagram"];
-  if (link?.includes("tiktok.com")) return ["Tik Tok"];
-  return ["Other"];
-}
+const isHidden = (props = {}) => {
+  if (getCheckbox(props, "Hidden")) return true;
+  if (getCheckbox(props, "Hide")) return true;
+  if (getCheckbox(props, "Oculto")) return true;
 
-function pickStatus(props = {}) {
-  return (
-    props?.Status?.status?.name ??
-    props?.Status?.select?.name ??
-    null
-  );
-}
-
-function isVideoFromUrl(url) {
-  if (!url) return false;
-  const u = url.toLowerCase();
-  return u.endsWith(".mp4") || u.endsWith(".mov") || u.includes("youtu");
-}
-
-function isHidden(page) {
-  const p = page?.properties || {};
-  return !!(
-    p?.Hidden?.checkbox ||
-    p?.Hide?.checkbox ||
-    p?.["Hide from Grid"]?.checkbox ||
-    p?.["Oculto"]?.checkbox ||
-    (p?.Status?.status?.name === "Hidden")
-  );
-}
-
-function isPinned(page) {
-  const p = page?.properties || {};
-  return !!(
-    p?.Pinned?.checkbox ||
-    p?.Pin?.checkbox ||
-    p?.Star?.checkbox ||
-    p?.Featured?.checkbox ||
-    (p?.Status?.status?.name === "Pinned")
-  );
-}
-
-async function notionQueryAll(token, databaseId, body) {
-  const url = `https://api.notion.com/v1/databases/${databaseId}/query`;
-  const headers = {
-    "Authorization": `Bearer ${token}`,
-    "Notion-Version": NOTION_VERSION,
-    "Content-Type": "application/json",
-  };
-
-  let results = [];
-  let start_cursor = undefined;
-  do {
-    const r = await fetch(url, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ ...body, start_cursor }),
-    });
-    if (!r.ok) {
-      const t = await r.text();
-      throw new Error(`Notion query failed: ${r.status} ${t}`);
+  for (const [name, val] of Object.entries(props)) {
+    if (val?.type === "checkbox") {
+      const n = name.toLowerCase();
+      if ((/hide|hidden|ocult/).test(n) && val.checkbox) return true;
     }
-    const data = await r.json();
-    results = results.concat(data.results || []);
-    start_cursor = data.has_more ? data.next_cursor : undefined;
-  } while (start_cursor && results.length < 200);
+  }
+  return false;
+};
 
+async function queryAll(databaseId, token) {
+  const url = `https://api.notion.com/v1/databases/${databaseId}/query`;
+  let has_more = true, next_cursor, results = [];
+
+  while (has_more) {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Notion-Version": NOTION_VERSION,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        page_size: 100,
+        start_cursor: next_cursor,
+        sorts: [{ timestamp: "last_edited_time", direction: "descending" }],
+      }),
+    });
+    if (!res.ok) throw new Error(`Notion ${res.status}: ${await res.text()}`);
+    const data = await res.json();
+    results.push(...(data.results || []));
+    has_more = data.has_more;
+    next_cursor = data.next_cursor;
+  }
   return results;
 }
 
 export default async function handler(req, res) {
   try {
     const token = process.env.NOTION_TOKEN;
-    const databaseId = process.env.NOTION_DATABASE_ID;
-    if (!token || !databaseId) {
-      return res.status(200).json({ ok: false, items: [], error: "Missing NOTION env" });
+    const db = process.env.NOTION_DATABASE_ID;
+    if (!token || !db) {
+      return res.status(200).json({ ok: false, error: "Missing NOTION envs" });
     }
 
-    // Ordenar por fecha si hay una propiedad; si no, por última edición
-    const sorts = [
-      { property: "Publish Date", direction: "descending" },
-      { timestamp: "last_edited_time", direction: "descending" },
-    ];
+    const bio = {
+      username: process.env.BIO_USERNAME || "@your_username",
+      name: process.env.BIO_NAME || "Grid Content Planner",
+      textLines: (process.env.BIO_TEXT || "")
+        .split("\n").map(s => s.trim()).filter(Boolean),
+      url: process.env.BIO_URL || "https://websitelink.com",
+      avatar: process.env.BIO_AVATAR || "",
+    };
 
-    const results = await notionQueryAll(token, databaseId, {
-      page_size: 60,
-      sorts,
+    const pages = await queryAll(db, token);
+
+    const raw = pages.map((page) => {
+      const p = page.properties || {};
+      if (isHidden(p)) return null;
+
+      const pinned = getCheckbox(p, "Pinned") || getCheckbox(p, "Pin") || false;
+      const platform =
+        getSelect(p, "Platform") || getSelect(p, "Plataform") || getSelect(p, "Plataforma") || "Other";
+      const status =
+        getSelect(p, "Status") || getSelect(p, "Estado") || null;
+
+      return {
+        id: page.id,
+        title: getTitle(p),
+        platform,
+        status,
+        pinned,
+        image: getImage(p),
+        link: getLink(p) || null,
+        _edited: page.last_edited_time || page.created_time,
+      };
+    }).filter(Boolean);
+
+    raw.sort((a, b) => {
+      if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+      return new Date(b._edited) - new Date(a._edited);
     });
+    const items = raw.map(({ _edited, ...x }) => x);
 
-    const items = results
-      .filter((p) => !isHidden(p))
-      .map((page) => {
-        const props = page?.properties || {};
-        const link = pickLink(props);
-        const image = pickImage(page);
-        const platforms = pickPlatforms(props, link);
+    const platforms = Array.from(new Set(items.map(i => i.platform).filter(Boolean)));
+    const statuses  = Array.from(new Set(items.map(i => i.status).filter(Boolean)));
 
-        return {
-          id: page.id,
-          title: pickTitle(props),
-          link,
-          image,
-          platform: platforms[0] || "Other",
-          platforms,
-          status: pickStatus(props),
-          pinned: isPinned(page),
-          isVideo: isVideoFromUrl(image) || isVideoFromUrl(link),
-        };
-      });
-
-    // Pinned primero
-    items.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
-
-    res.status(200).json({ ok: true, items });
+    res.status(200).json({
+      ok: true,
+      bio,
+      filters: {
+        platforms: platforms.length ? platforms : ["Instagram", "Tik Tok", "Other"],
+        status: statuses.length ? statuses : ["Idea", "Draft", "In progress", "Done"],
+      },
+      items,
+    });
   } catch (e) {
-    console.error(e);
-    res.status(200).json({ ok: false, items: [], error: e.message });
+    res.status(200).json({ ok: false, error: String(e.message || e) });
   }
 }
