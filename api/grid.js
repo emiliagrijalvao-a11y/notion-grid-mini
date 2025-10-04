@@ -1,8 +1,8 @@
 // /api/grid.js
-// Vercel/Next API route – Notion → JSON para el widget
+// Vercel/Next API route — Notion → JSON para el widget
 const NOTION_VERSION = "2022-06-28";
 
-/* ----------------------- helpers: lectura de propiedades ----------------------- */
+/* ------------ helpers de propiedades ------------ */
 const txt = (arr) => (Array.isArray(arr) ? arr.map(t => t?.plain_text ?? "").join("") : "");
 const titleOf = (p) =>
   txt(p?.Name?.title) ||
@@ -10,11 +10,10 @@ const titleOf = (p) =>
   txt(p?.["Display Name"]?.title) ||
   "Untitled";
 
-const rich = (p, key) => txt(p?.[key]?.rich_text);
-
-const urlOf = (p, key) => p?.[key]?.url || null;
-const selectOf = (p, key) => p?.[key]?.select?.name ?? null;
-const checkOf  = (p, key) => !!p?.[key]?.checkbox;
+const rich    = (p, key) => txt(p?.[key]?.rich_text);
+const urlOf   = (p, key) => p?.[key]?.url || null;
+const selectOf= (p, key) => p?.[key]?.select?.name ?? null;
+const checkOf = (p, key) => !!p?.[key]?.checkbox;
 
 const fileUrl = (f) => {
   if (!f) return null;
@@ -28,11 +27,9 @@ const looksLikeVideo = (u) =>
   typeof u === "string" && /\.(mp4|mov|webm|m4v)(\?.*)?$/i.test(u);
 
 const getImage = (p) =>
-  // Archivos
   firstFileFrom(p?.Attachment) ||
   firstFileFrom(p?.Image)      ||
   firstFileFrom(p?.Cover)      ||
-  // URLs de imagen
   urlOf(p, "Image URL") || urlOf(p, "Image Url") || urlOf(p, "Image") || null;
 
 const getDate = (p, page) =>
@@ -43,11 +40,13 @@ const getDate = (p, page) =>
   page?.created_time ||
   null;
 
+const getLink = (p) =>
+  urlOf(p, "Link") || urlOf(p, "URL") || urlOf(p, "Url") || null;
+
 const isHidden = (props = {}) => {
   if (checkOf(props, "Hidden")) return true;
   if (checkOf(props, "Hide"))   return true;
   if (checkOf(props, "Oculto")) return true;
-
   for (const [name, val] of Object.entries(props)) {
     if (val?.type === "checkbox") {
       const n = name.toLowerCase();
@@ -57,7 +56,7 @@ const isHidden = (props = {}) => {
   return false;
 };
 
-/* ----------------------- Notion: query paginado ----------------------- */
+/* ------------ Notion: query paginado ------------ */
 async function queryAll(databaseId, token) {
   const url = `https://api.notion.com/v1/databases/${databaseId}/query`;
   let has_more = true, next_cursor = undefined, results = [];
@@ -76,39 +75,32 @@ async function queryAll(databaseId, token) {
         sorts: [{ timestamp: "last_edited_time", direction: "descending" }],
       }),
     });
-
-    if (!res.ok) {
-      const msg = await res.text();
-      throw new Error(`Notion ${res.status}: ${msg}`);
-    }
-
+    if (!res.ok) throw new Error(`Notion ${res.status}: ${await res.text()}`);
     const data = await res.json();
     results.push(...(data.results || []));
-    has_more   = data.has_more;
+    has_more = data.has_more;
     next_cursor = data.next_cursor;
   }
   return results;
 }
 
-/* ----------------------- Bio: leer desde base "Bio Settings" ----------------------- */
+/* ------------ Bio: desde DB "Bio Settings" ------------ */
 async function fetchBio(token, bioDbId) {
   if (!bioDbId) return null;
-
   const pages = await queryAll(bioDbId, token);
   if (!pages.length) return null;
 
-  // Tomamos la fila más recientemente editada
   const page = pages[0];
   const p = page.properties || {};
 
   const avatar =
-    firstFileFrom(p?.Avatar) || // Attachments (lo que estás usando)
-    urlOf(p, "Avatar")        || // por si algún día usan URL
+    firstFileFrom(p?.Avatar) ||
+    urlOf(p, "Avatar") ||
     "";
 
   const username =
     rich(p, "Username") ||
-    titleOf(p) ||
+    txt(p?.Username?.title) ||
     "";
 
   const name =
@@ -116,67 +108,56 @@ async function fetchBio(token, bioDbId) {
     titleOf(p) ||
     "";
 
-  const bioText =
-    rich(p, "Bio") || "";
-
+  const bioText = rich(p, "Bio") || "";
   const url = urlOf(p, "Link") || "";
 
   return {
     username,
     name,
-    textLines: bioText
-      .split("\n")
-      .map(s => s.trim())
-      .filter(Boolean),
+    textLines: bioText.split("\n").map(s => s.trim()).filter(Boolean),
     url,
     avatar,
   };
 }
 
-/* ----------------------- Handler ----------------------- */
+/* ------------ Handler ------------ */
 export default async function handler(req, res) {
   try {
     const token = process.env.NOTION_TOKEN;
     const gridDb = process.env.NOTION_DATABASE_ID;
-    const bioDb  = process.env.BIO_DATABASE_ID; // <- tu tabla "Bio Settings"
+    const bioDb  = process.env.BIO_DATABASE_ID;
 
     if (!token || !gridDb) {
       return res.status(200).json({ ok: false, error: "Missing NOTION envs" });
     }
 
-    // 1) Grid
+    // GRID
     const pages = await queryAll(gridDb, token);
-
     const raw = pages.map((page) => {
       const p = page.properties || {};
       if (isHidden(p)) return null;
 
       const image = getImage(p);
-
       const platform =
         selectOf(p, "Platform") ||
         selectOf(p, "Plataform") ||
         selectOf(p, "Plataforma") ||
         "Other";
-
       const status =
         selectOf(p, "Status") ||
         selectOf(p, "Estado") ||
         null;
-
       const pinned =
         checkOf(p, "Pinned") || checkOf(p, "Pin") || false;
 
-      // Caption/description opcional para el modal
       const caption =
         rich(p, "Caption") ||
         rich(p, "Description") ||
         rich(p, "Notes") ||
         "";
 
-      const link = getLink(p) || null;
-
       const date = getDate(p, page);
+      const link = getLink(p);
 
       const isVideo =
         checkOf(p, "Video") ||
@@ -198,24 +179,21 @@ export default async function handler(req, res) {
       };
     }).filter(Boolean);
 
-    // Orden: primero pineados, luego último editado
     raw.sort((a, b) => {
       if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
       return new Date(b._edited) - new Date(a._edited);
     });
-
     const items = raw.map(({ _edited, ...x }) => x);
 
-    // Filtros dinámicos
     const platforms = Array.from(new Set(items.map(i => i.platform).filter(Boolean)));
     const statuses  = Array.from(new Set(items.map(i => i.status).filter(Boolean)));
 
-    // 2) Bio
+    // BIO
     const bio = await fetchBio(token, bioDb);
 
     res.status(200).json({
       ok: true,
-      bio, // <- el front lo usa tal cual
+      bio,
       filters: {
         platforms: platforms.length ? platforms : ["Instagram", "Tik Tok", "Other"],
         status: statuses.length ? statuses : ["Idea", "Draft", "In progress", "Done"],
