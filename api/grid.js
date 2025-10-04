@@ -1,8 +1,8 @@
 // /api/grid.js
-// Vercel/Next API route — Notion → JSON para el widget
+// Notion → JSON para el widget (con fallback de BIO vía envs)
 const NOTION_VERSION = "2022-06-28";
 
-/* ------------ helpers de propiedades ------------ */
+/* ----- helpers de propiedades ----- */
 const txt = (arr) => (Array.isArray(arr) ? arr.map(t => t?.plain_text ?? "").join("") : "");
 const titleOf = (p) =>
   txt(p?.Name?.title) ||
@@ -10,10 +10,10 @@ const titleOf = (p) =>
   txt(p?.["Display Name"]?.title) ||
   "Untitled";
 
-const rich    = (p, key) => txt(p?.[key]?.rich_text);
-const urlOf   = (p, key) => p?.[key]?.url || null;
-const selectOf= (p, key) => p?.[key]?.select?.name ?? null;
-const checkOf = (p, key) => !!p?.[key]?.checkbox;
+const rich     = (p, key) => txt(p?.[key]?.rich_text);
+const urlOf    = (p, key) => p?.[key]?.url || null;
+const selectOf = (p, key) => p?.[key]?.select?.name ?? null;
+const checkOf  = (p, key) => !!p?.[key]?.checkbox;
 
 const fileUrl = (f) => {
   if (!f) return null;
@@ -56,7 +56,7 @@ const isHidden = (props = {}) => {
   return false;
 };
 
-/* ------------ Notion: query paginado ------------ */
+/* ----- Notion: query paginado ----- */
 async function queryAll(databaseId, token) {
   const url = `https://api.notion.com/v1/databases/${databaseId}/query`;
   let has_more = true, next_cursor = undefined, results = [];
@@ -84,7 +84,7 @@ async function queryAll(databaseId, token) {
   return results;
 }
 
-/* ------------ Bio: desde DB "Bio Settings" ------------ */
+/* ----- BIO: desde DB "Bio Settings" ----- */
 async function fetchBio(token, bioDbId) {
   if (!bioDbId) return null;
   const pages = await queryAll(bioDbId, token);
@@ -120,7 +120,19 @@ async function fetchBio(token, bioDbId) {
   };
 }
 
-/* ------------ Handler ------------ */
+/* util: ¿hay al menos un campo con datos? */
+function hasAnyBio(b) {
+  if (!b) return false;
+  return Boolean(
+    (b.username && b.username.trim()) ||
+    (b.name && b.name.trim()) ||
+    (Array.isArray(b.textLines) && b.textLines.length) ||
+    (b.url && b.url.trim()) ||
+    (b.avatar && b.avatar.trim())
+  );
+}
+
+/* ----- Handler ----- */
 export default async function handler(req, res) {
   try {
     const token = process.env.NOTION_TOKEN;
@@ -188,8 +200,29 @@ export default async function handler(req, res) {
     const platforms = Array.from(new Set(items.map(i => i.platform).filter(Boolean)));
     const statuses  = Array.from(new Set(items.map(i => i.status).filter(Boolean)));
 
-    // BIO
-    const bio = await fetchBio(token, bioDb);
+    // BIO: intenta DB; si no, fallback envs (sin romper nada más)
+    let bioFromDb = null;
+    if (bioDb) {
+      try {
+        bioFromDb = await fetchBio(token, bioDb);
+      } catch (e) {
+        // no tiramos la API: seguimos con fallback
+        console.error("Bio fetch error:", e?.message || e);
+      }
+    }
+
+    const bioFromEnv = {
+      username: process.env.BIO_USERNAME || "",
+      name: process.env.BIO_NAME || "",
+      textLines: (process.env.BIO_TEXT || "")
+        .split("\n").map(s => s.trim()).filter(Boolean),
+      url: process.env.BIO_URL || "",
+      avatar: process.env.BIO_AVATAR || "",
+    };
+
+    const bio = hasAnyBio(bioFromDb)
+      ? bioFromDb
+      : (hasAnyBio(bioFromEnv) ? bioFromEnv : null);
 
     res.status(200).json({
       ok: true,
