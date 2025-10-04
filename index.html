@@ -7,18 +7,20 @@
 <style>
   :root{
     --bg:#fff; --text:#111; --muted:#f5f5f5; --border:#e5e7eb; --blue-dark:#1B4B91;
-    --container:936px;
+    --container:936px;   /* ancho angosto */
     --gap:2px;
   }
   *{box-sizing:border-box}
   html,body{margin:0;background:var(--bg);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial}
   .wrap{max-width:var(--container);margin:0 auto;padding:16px}
 
+  /* toolbar */
   .toolbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--border);padding-bottom:12px;margin-bottom:12px}
   .btn{border:1px solid var(--border);background:#111;color:#fff;padding:10px 16px;font-weight:600;cursor:pointer;border-radius:6px;font-size:14px;display:inline-flex;align-items:center;gap:8px}
   .spacer{flex:1}
   .btn-dot{width:40px;height:40px;border:2px solid var(--border);background:#fff;cursor:pointer;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:bold}
 
+  /* dropdowns */
   .dd{position:relative}
   .dd-toggle{border:2px solid var(--border);background:#fff;padding:10px 14px;min-width:180px;cursor:pointer;display:inline-flex;justify-content:space-between;align-items:center;gap:8px;border-radius:20px;font-weight:500;font-size:14px}
   .dd-toggle .count{color:#999;margin-left:4px;font-size:14px}
@@ -32,6 +34,7 @@
   .dd-item .label{flex:1}
   .dd-item .count{color:#999;font-size:13px}
 
+  /* bio */
   .bio{display:none;border:1px solid var(--border);padding:16px;margin:10px 0 14px}
   .bio.visible{display:block}
   .bio-top{display:grid;grid-template-columns:64px 1fr;gap:12px;align-items:center;margin-bottom:6px}
@@ -41,6 +44,7 @@
   .bio-lines{white-space:pre-wrap;margin:8px 0;line-height:1.5;font-size:14px}
   .bio-link a{color:var(--blue-dark);text-decoration:none;font-weight:500;font-size:14px}
 
+  /* menu de opciones (tres puntos) */
   .menu{position:relative}
   .menu-panel{position:absolute;right:0;top:calc(100% + 8px);min-width:260px;background:#fff;border:1px solid var(--border);box-shadow:0 8px 24px rgba(0,0,0,.12);display:none;z-index:40;border-radius:12px;padding:10px}
   .menu.open .menu-panel{display:block}
@@ -51,6 +55,7 @@
   .switch.on{background:#111}.switch.on::after{transform:translateX(20px)}
   .menu-note{color:#6b7280;font-size:12px;padding:8px 0;margin-top:8px;border-top:1px solid var(--border);line-height:1.4}
 
+  /* grid */
   .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--gap);margin-top:0}
   .card{position:relative;background:#f5f5f5;cursor:pointer;overflow:hidden;aspect-ratio:4/5}
   .card-img,.card-video{width:100%;height:100%;object-fit:cover;display:block}
@@ -62,6 +67,7 @@
   .card-date{font-size:12px;text-shadow:0 1px 2px rgba(0,0,0,0.5)}
   .card-placeholder{display:flex;align-items:center;justify-content:center;color:#aaa;font-size:14px;font-weight:500}
 
+  /* modal */
   .modal{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:50;padding:20px}
   .modal.open{display:flex}
   .modal-content{max-width:90vw;max-height:90vh;display:flex;flex-direction:column;align-items:center;gap:12px}
@@ -72,6 +78,7 @@
 </head>
 <body>
 <main class="wrap">
+  <!-- Toolbar -->
   <div class="toolbar">
     <button id="btnRefresh" class="btn"><span style="font-size:16px">↻</span> Refresh</button>
 
@@ -107,6 +114,7 @@
     </div>
   </div>
 
+  <!-- Bio -->
   <section id="bio" class="bio" aria-hidden="true">
     <div class="bio-top">
       <img id="bioAvatar" class="bio-avatar" alt="" style="display:none" />
@@ -119,9 +127,11 @@
     <div class="bio-link"><a id="bioUrl" href="#" target="_blank" rel="noopener"></a></div>
   </section>
 
+  <!-- Grid -->
   <section id="grid" class="grid" aria-live="polite"></section>
 </main>
 
+<!-- Modal -->
 <div id="modal" class="modal" aria-hidden="true">
   <button class="modal-close" id="modalClose">×</button>
   <div class="modal-content">
@@ -137,7 +147,7 @@
     selectedPlatform: null,
     selectedStatus: null,
     bio: null,
-    showBio: true,
+    showBio: (localStorage.getItem("showBio") ?? "true")==="true",
     ddOpen: null,
     menuOpen: false
   };
@@ -189,7 +199,7 @@
     state.items = data.items || [];
     state.filters = data.filters || { platforms: [], status: [] };
     state.bio = data.bio || null;
-    state.showBio = (localStorage.getItem("showBio") ?? "true")==="true";
+
     setSwitch($switchBio, state.showBio);
     renderBio();
     renderMenus();
@@ -314,11 +324,19 @@
     $modalMedia.innerHTML=""; $modalCaption.textContent="";
   }
 
+  /* ------- BIO: maneja \n literales y saltos reales ------- */
   function renderBio(){
     if(!state.bio) return;
+
     $bioUsername.textContent = state.bio.username || "";
     $bioName.textContent = state.bio.name || "";
-    $bioLines.textContent = (state.bio.textLines || []).join("\n");
+
+    const bioText = Array.isArray(state.bio.textLines)
+      ? state.bio.textLines.join("\n")
+      : String(state.bio.text || "").replace(/\\n/g, "\n");
+
+    $bioLines.textContent = bioText;
+
     const cleanUrl = (state.bio.url || "").replace(/^https?:\/\//,"");
     $bioUrl.textContent = cleanUrl;
     $bioUrl.href = state.bio.url || "#";
@@ -338,6 +356,7 @@
       $bio.setAttribute("aria-hidden","true"); 
     }
   }
+  /* -------------------------------------------------------- */
 
   function setSwitch(el,on){ el.classList.toggle("on",!!on); el.setAttribute("aria-checked",!!on); }
   function toggleBio(){ state.showBio=!state.showBio; localStorage.setItem("showBio",String(state.showBio)); setSwitch($switchBio,state.showBio); renderBio(); }
