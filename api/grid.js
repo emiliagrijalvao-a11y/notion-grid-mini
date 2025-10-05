@@ -1,13 +1,8 @@
-// /api/grid.js
+// api/grid.js
 const NOTION_VERSION = "2022-06-28";
 
-const getTitle = (p) =>
-  p?.Name?.title?.[0]?.plain_text ??
-  p?.Title?.title?.[0]?.plain_text ??
-  "Untitled";
-
-const getLink = (p) =>
-  p?.Link?.url || p?.URL?.url || p?.Url?.url || null;
+const isVideoUrl = (u = "") =>
+  /\.(mp4|mov|m4v|webm)$/i.test(u.split("?")[0] || "");
 
 const fileUrl = (f) => {
   if (!f) return null;
@@ -16,12 +11,35 @@ const fileUrl = (f) => {
   return null;
 };
 
-const getImage = (p) =>
-  fileUrl(p?.Image?.files?.[0] || p?.Attachment?.files?.[0] || p?.Cover?.files?.[0]);
+const getTitle = (p) =>
+  p?.Name?.title?.[0]?.plain_text ??
+  p?.Title?.title?.[0]?.plain_text ??
+  "Untitled";
+
+const getCaption = (p) =>
+  (p?.Caption?.rich_text || p?.Description?.rich_text || [])
+    .map((t) => t.plain_text)
+    .join(" ")
+    .trim();
+
+const getLink = (p) =>
+  p?.Link?.url || p?.URL?.url || p?.Url?.url || null;
 
 const getSelect = (p, key) => p?.[key]?.select?.name ?? null;
 const getCheckbox = (p, key) => !!p?.[key]?.checkbox;
-const getDate = (p, key) => p?.[key]?.date?.start ?? null;
+
+const getDate = (p) =>
+  p?.Date?.date?.start ||
+  p?.Fecha?.date?.start ||
+  p?.Published?.date?.start ||
+  null;
+
+const getImage = (p) =>
+  fileUrl(
+    p?.Image?.files?.[0] ||
+    p?.Attachment?.files?.[0] ||
+    p?.Cover?.files?.[0]
+  );
 
 const isHidden = (props = {}) => {
   if (getCheckbox(props, "Hidden")) return true;
@@ -36,7 +54,7 @@ const isHidden = (props = {}) => {
   return false;
 };
 
-async function queryAll(databaseId, token) {
+async function notionQueryAll(databaseId, token) {
   const url = `https://api.notion.com/v1/databases/${databaseId}/query`;
   let has_more = true, next_cursor, results = [];
   while (has_more) {
@@ -62,40 +80,41 @@ async function queryAll(databaseId, token) {
   return results;
 }
 
-// Lee primera fila de BIO_SETTINGS_DATABASE_ID (opcional)
-async function readBioFromDb(bioDbId, token) {
+async function getBioFromDb(bioDbId, token) {
   if (!bioDbId) return null;
-  const rows = await queryAll(bioDbId, token);
-  const first = rows?.[0];
-  const p = first?.properties || {};
+  const rows = await notionQueryAll(bioDbId, token);
+  if (!rows.length) return null;
+
+  // Tomamos la fila más reciente
+  const page = rows[0];
+  const p = page.properties || {};
+
+  // Campos esperados en Notion (Bio Settings):
+  // Name (title)   → display name/categoría
+  // Username (text)
+  // Lines   (text, multiline)  → 1 línea por \n
+  // URL     (url)
+  // Avatar  (files) → 1er archivo como avatar
+  const avatar = fileUrl(p?.Avatar?.files?.[0]);
   const username =
-    p?.Username?.rich_text?.[0]?.plain_text ??
-    p?.User?.rich_text?.[0]?.plain_text ??
-    p?.Handle?.rich_text?.[0]?.plain_text ??
-    null;
-  const name =
-    p?.Display?.rich_text?.[0]?.plain_text ??
-    p?.Name?.rich_text?.[0]?.plain_text ??
-    p?.Category?.rich_text?.[0]?.plain_text ??
-    null;
+    (p?.Username?.rich_text || [])
+      .map((t) => t.plain_text)
+      .join("")
+      .trim() || null;
+
   const lines =
-    p?.Lines?.rich_text?.map(r => r?.plain_text).filter(Boolean) ??
-    p?.Text?.rich_text?.map(r => r?.plain_text).filter(Boolean) ?? [];
-  const url = p?.URL?.url || p?.Link?.url || null;
+    (p?.Lines?.rich_text || [])
+      .map((t) => t.plain_text)
+      .join("\n")
+      .split("\n")
+      .map((s) => s.trim())
+      .filter(Boolean);
 
-  // Avatar: acepta Attachment (files) o Avatar URL (url)
-  const avatar =
-    fileUrl(p?.Avatar?.files?.[0]) ||
-    p?.["Avatar URL"]?.url ||
-    p?.AvatarUrl?.url ||
-    null;
-
-  if (!username && !name && !lines.length && !url && !avatar) return null;
   return {
-    username: username || "",
-    name: name || "",
-    textLines: lines,
-    url: url || "",
+    username: username || "@your_username",
+    name: getTitle(p) || "Grid Content Planner",
+    textLines: lines || [],
+    url: p?.URL?.url || process.env.BIO_FALLBACK_URL || "https://websitelink.com",
     avatar: avatar || "",
   };
 }
@@ -104,26 +123,25 @@ export default async function handler(req, res) {
   try {
     const token = process.env.NOTION_TOKEN;
     const db = process.env.NOTION_DATABASE_ID;
-    const bioDb = process.env.BIO_SETTINGS_DATABASE_ID || ""; // opcional
+    const bioDb = process.env.BIO_DATABASE_ID;
 
     if (!token || !db) {
       return res.status(200).json({ ok: false, error: "Missing NOTION envs" });
     }
 
-    // BIO: primero intento tabla; si no, ENV
-    let bio =
-      (await readBioFromDb(bioDb, token)) ||
-      {
-        username: process.env.BIO_USERNAME || "@your_username",
-        name: process.env.BIO_NAME || "Grid Content Planner",
-        textLines: (process.env.BIO_TEXT || "")
-          .split("\n").map(s => s.trim()).filter(Boolean),
-        url: process.env.BIO_URL || "https://websitelink.com",
-        avatar: process.env.BIO_AVATAR || "",
-      };
+    // BIO: primero intento Notion (Bio Settings). Si no hay, uso fallback de envs (si existieran)
+    const bioFromDb = await getBioFromDb(bioDb, token);
+    const bio = bioFromDb || {
+      username: process.env.BIO_USERNAME || "@your_username",
+      name: process.env.BIO_NAME || "Grid Content Planner",
+      textLines: (process.env.BIO_TEXT || "")
+        .split("\n").map(s => s.trim()).filter(Boolean),
+      url: process.env.BIO_URL || process.env.BIO_FALLBACK_URL || "https://websitelink.com",
+      avatar: process.env.BIO_AVATAR || "",
+    };
 
     // GRID
-    const pages = await queryAll(db, token);
+    const pages = await notionQueryAll(db, token);
 
     const raw = pages.map((page) => {
       const p = page.properties || {};
@@ -131,13 +149,6 @@ export default async function handler(req, res) {
 
       const pinned =
         getCheckbox(p, "Pinned") || getCheckbox(p, "Pin") || false;
-
-      // NUEVO: isVideo (compatible con varios nombres)
-      const isVideo =
-        getCheckbox(p, "Video") ||
-        getCheckbox(p, "Is Video") ||
-        getCheckbox(p, "IsVideo") ||
-        false;
 
       const platform =
         getSelect(p, "Platform") ||
@@ -150,39 +161,53 @@ export default async function handler(req, res) {
         getSelect(p, "Estado") ||
         null;
 
-      // NUEVO: date (opcional)
-      const date =
-        getDate(p, "Date") ||
-        getDate(p, "Fecha") ||
-        page.last_edited_time || null;
+      const image = getImage(p);
+      const link = getLink(p) || null;
+
+      // Detectar video:
+      // 1) Checkbox "Video" o "Is Video"
+      // 2) Select "Type" = Video
+      // 3) URL con extensión de video
+      const isVideo =
+        getCheckbox(p, "Video") ||
+        getCheckbox(p, "Is Video") ||
+        (getSelect(p, "Type") || "").toLowerCase() === "video" ||
+        isVideoUrl(image || "");
+
+      const date = getDate(p);
+      const caption = getCaption(p);
 
       return {
         id: page.id,
         title: getTitle(p),
+        caption,
+        date,
         platform,
         status,
         pinned,
-        isVideo,           // ← usado por el icono ▶
-        image: getImage(p),
-        link: getLink(p) || null,
-        date,              // ← usado en el overlay
+        isVideo,
+        image,
+        link,
         _edited: page.last_edited_time || page.created_time,
       };
     }).filter(Boolean);
 
-    // Orden: primero pinneados, luego por última edición
+    // Orden base: pinned primero, luego por fecha desc (o last_edited)
     raw.sort((a, b) => {
       if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
-      return new Date(b._edited) - new Date(a._edited);
+      const da = a.date ? new Date(a.date) : new Date(a._edited);
+      const dbb = b.date ? new Date(b.date) : new Date(b._edited);
+      return dbb - da; // desc
     });
 
+    // Distintos para filtros
     const items = raw.map(({ _edited, ...x }) => x);
-
     const platforms = Array.from(new Set(items.map(i => i.platform).filter(Boolean)));
     const statuses  = Array.from(new Set(items.map(i => i.status).filter(Boolean)));
 
     res.status(200).json({
       ok: true,
+      dbId: db,           // <- para guardar orden local por DB
       bio,
       filters: {
         platforms: platforms.length ? platforms : ["Instagram", "Tik Tok", "Other"],
