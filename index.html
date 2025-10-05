@@ -5,128 +5,175 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Notion Grid Widget</title>
 
-<!-- Font Awesome (free) para pin/play -->
-<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+<!-- Font Awesome FREE (pin/play) -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+
+<!-- Animated icon (Refresh) -->
+<script src="https://animatedicons.co/scripts/embed-animated-icons.js"></script>
 
 <style>
   :root{
-    --bg:#fff; --text:#111; --muted:#f5f5f5; --border:#e5e7eb; --blue-dark:#1B4B91;
+    --bg:#fff; --text:#111; --muted:#f7f7f7; --border:#e5e7eb; --blue:#1B4B91;
     --container:936px; --gap:2px;
+    --ui-font:13px; --ui-pad-y:8px; --ui-pad-x:12px; --ui-radius:14px;
+    --dd-minw:140px; /* ancho reducido de toggles */
   }
   *{box-sizing:border-box}
   html,body{margin:0;background:var(--bg);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial}
-  .wrap{max-width:var(--container);margin:0 auto;padding:12px}
+  .wrap{max-width:var(--container);margin:0 auto;padding:14px}
 
-  /* Toolbar compacta */
-  .toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--border);padding:8px 0 10px;margin-bottom:10px}
-  .btn{border:1px solid var(--border);background:#111;color:#fff;padding:8px 12px;font-weight:600;cursor:pointer;border-radius:6px;font-size:13px;display:inline-flex;align-items:center;gap:8px}
-  .spacer{flex:1}
-  .btn-dot{width:36px;height:36px;border:2px solid var(--border);background:#fff;cursor:pointer;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:bold}
+  /* Toolbar centrada y compacta */
+  .toolbar{
+    display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+    border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:12px;
+    justify-content:center;
+  }
+  .btn{
+    border:1px solid var(--border); background:#111; color:#fff;
+    padding:var(--ui-pad-y) var(--ui-pad-x); font-weight:700; cursor:pointer;
+    border-radius:10px; font-size:var(--ui-font); display:inline-flex; align-items:center; gap:8px
+  }
+  .btn-dot{
+    width:36px; height:36px; border:2px solid var(--border); background:#fff; cursor:pointer;
+    border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:16px; font-weight:bold
+  }
 
-  /* Dropdowns compactos */
+  /* Dropdowns compactos con ancho reducido */
   .dd{position:relative}
-  .dd-toggle{border:2px solid var(--border);background:#fff;padding:8px 12px;min-width:180px;cursor:pointer;display:inline-flex;justify-content:space-between;align-items:center;gap:8px;border-radius:14px;font-weight:500;font-size:13px}
-  .dd-toggle .count{color:#999;margin-left:4px;font-size:13px}
-  .dd-menu{position:absolute;top:calc(100% + 8px);left:0;min-width:100%;background:#fff;border:1px solid var(--border);box-shadow:0 8px 24px rgba(0,0,0,.12);display:none;z-index:30;border-radius:10px;padding:6px}
+  .dd-toggle{
+    border:2px solid var(--border); background:#fff; padding:var(--ui-pad-y) var(--ui-pad-x);
+    min-width:var(--dd-minw); max-width:180px; cursor:pointer; display:inline-flex;
+    justify-content:space-between; align-items:center; gap:8px; border-radius:var(--ui-radius);
+    font-weight:600; font-size:var(--ui-font); white-space:nowrap
+  }
+  .dd-toggle .label-clip{overflow:hidden; text-overflow:ellipsis}
+  .dd-toggle .count{color:#999; margin-left:6px; font-size:12px; flex-shrink:0}
+  .dd-menu{
+    position:absolute; top:calc(100% + 8px); left:0; min-width:100%; background:#fff; border:1px solid var(--border);
+    box-shadow:0 8px 24px rgba(0,0,0,.12); display:none; z-index:30; border-radius:12px; padding:6px
+  }
   .dd.open .dd-menu{display:block}
-  .dd-item{padding:8px 10px;cursor:pointer;display:flex;align-items:center;gap:8px;font-size:13px;border-radius:8px}
+  .dd-item{padding:8px 10px; cursor:pointer; display:flex; align-items:center; gap:10px; font-size:13px; border-radius:8px}
   .dd-item:hover{background:#f9fafb}
-  .dd-item .radio{width:16px;height:16px;border:2px solid #ddd;border-radius:50%;position:relative;flex-shrink:0}
+  .dd-item .radio{width:16px; height:16px; border:2px solid #ddd; border-radius:50%; position:relative; flex-shrink:0}
   .dd-item.active .radio{border-color:#111}
-  .dd-item.active .radio::after{content:"";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:6px;height:6px;background:#111;border-radius:50%}
+  .dd-item.active .radio::after{content:""; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:7px; height:7px; background:#111; border-radius:50%}
   .dd-item .label{flex:1}
-  .dd-item .count{color:#999;font-size:12px}
+  .dd-item .count{color:#999; font-size:12px}
 
   /* Bio */
-  .bio{display:none;border:1px solid var(--border);padding:12px;margin:8px 0 12px;border-radius:10px}
+  .bio{display:none; border:1px solid var(--border); padding:14px; margin:10px 0 12px; border-radius:12px}
   .bio.visible{display:block}
-  .bio-top{display:grid;grid-template-columns:56px 1fr;gap:10px;align-items:center;margin-bottom:4px}
-  .bio-avatar{width:56px;height:56px;border-radius:50%;object-fit:cover;background:#eee}
-  .bio-username{font-weight:800;font-size:15px}
-  .bio-name{font-weight:600;margin-top:2px;font-size:13px;white-space:nowrap}
-  .bio-lines{white-space:pre-wrap;margin:6px 0;line-height:1.5;font-size:13px}
-  .bio-link a{color:var(--blue-dark);text-decoration:none;font-weight:500;font-size:13px}
+  .bio-top{display:grid; grid-template-columns:56px 1fr; gap:10px; align-items:center; margin-bottom:4px}
+  .bio-avatar{width:56px; height:56px; border-radius:50%; object-fit:cover; background:#eee}
+  .bio-username{font-weight:800; font-size:16px}
+  .bio-name{font-weight:600; margin-top:3px; font-size:14px; white-space:nowrap}
+  .bio-lines{white-space:pre-wrap; margin:8px 0; line-height:1.45; font-size:14px}
+  .bio-link a{color:var(--blue); text-decoration:none; font-weight:600; font-size:14px}
 
+  /* Menú */
   .menu{position:relative}
-  .menu-panel{position:absolute;right:0;top:calc(100% + 8px);min-width:260px;background:#fff;border:1px solid var(--border);box-shadow:0 8px 24px rgba(0,0,0,.12);display:none;z-index:40;border-radius:12px;padding:10px}
+  .menu-panel{
+    position:absolute; right:0; top:calc(100% + 8px); min-width:260px; background:#fff; border:1px solid var(--border);
+    box-shadow:0 8px 24px rgba(0,0,0,.12); display:none; z-index:40; border-radius:12px; padding:10px
+  }
   .menu.open .menu-panel{display:block}
-  .menu-row{display:flex;align-items:center;justify-content:space-between;padding:8px;border-radius:8px;cursor:pointer}
+  .menu-row{display:flex; align-items:center; justify-content:space-between; padding:10px; border-radius:8px; cursor:pointer}
   .menu-row:hover{background:#f9fafb}
-  .switch{position:relative;width:40px;height:22px;background:#ddd;cursor:pointer;border-radius:12px}
-  .switch::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;background:#fff;transition:transform .18s;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,.2)}
-  .switch.on{background:#111}.switch.on::after{transform:translateX(18px)}
-  .menu-note{color:#6b7280;font-size:12px;padding:8px 0;margin-top:8px;border-top:1px solid var(--border);line-height:1.4}
+  .switch{position:relative; width:42px; height:22px; background:#ddd; cursor:pointer; border-radius:12px}
+  .switch::after{content:""; position:absolute; top:2px; left:2px; width:18px; height:18px; background:#fff; transition:transform .18s; border-radius:50%; box-shadow:0 1px 3px rgba(0,0,0,.2)}
+  .switch.on{background:#111}.switch.on::after{transform:translateX(20px)}
+  .menu-note{color:#6b7280; font-size:12px; padding:8px 0; margin-top:8px; border-top:1px solid var(--border); line-height:1.4}
 
   /* Grid */
-  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--gap);margin-top:0}
+  .grid{display:grid; grid-template-columns:repeat(3,1fr); gap:var(--gap); margin-top:0}
+  .card{position:relative; background:#f5f5f5; cursor:grab; overflow:hidden; aspect-ratio:4/5; transition:opacity .2s, transform .2s}
+  .card.dragging{opacity:.5; cursor:grabbing; transform:scale(1.05); z-index:100}
+  .card.drag-over{outline:1px solid #e5e7eb}
+  .card-img,.card-video{width:100%; height:100%; object-fit:cover; display:block}
 
-  /* Drag & Drop: cursor + efectos */
-  .card{position:relative;background:#f5f5f5;cursor:grab;overflow:hidden;aspect-ratio:4/5;transition:opacity .2s,transform .2s}
-  .card.dragging{opacity:.5;cursor:grabbing;transform:scale(1.05);z-index:100}
-  .card.drag-over{border:1px solid #e5e7eb}
+  /* Video sin UI nativa */
+  .card-video{pointer-events:none}
+  .card-video::-webkit-media-controls-enclosure,
+  .card-video::-webkit-media-controls{display:none !important;}
 
-  .card-img,.card-video{width:100%;height:100%;object-fit:cover;display:block}
+  /* Badges arriba derecha (pin/play en blanco) */
+  .badge{position:absolute; top:6px; right:6px; z-index:2; display:flex; gap:6px; align-items:center}
+  .badge i{font-size:13px; color:#fff; filter:drop-shadow(0 1px 2px rgba(0,0,0,.65))}
+  .badge .fa-play{font-size:12px; opacity:.95}
 
-  /* Iconos overlay minimalistas */
-  .pin{position:absolute;top:6px;right:6px;font-size:14px;color:#fff;filter:drop-shadow(0 0.5px 1px rgba(0,0,0,.7));z-index:2}
-  .play-icon{position:absolute;top:6px;left:6px;font-size:14px;color:#fff;filter:drop-shadow(0 0.5px 1px rgba(0,0,0,.7));z-index:2}
-
-  .card-overlay{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top, rgba(0,0,0,.7) 0%, transparent 100%);padding:8px;display:flex;justify-content:space-between;align-items:flex-end;color:#fff;opacity:0;transition:opacity .18s ease}
+  /* Overlay */
+  .card-overlay{position:absolute; bottom:0; left:0; right:0; background:linear-gradient(to top, rgba(0,0,0,.55) 0%, transparent 100%); padding:8px; display:flex; justify-content:space-between; align-items:flex-end; color:#fff; opacity:0; transition:opacity .18s ease}
   .card:hover .card-overlay{opacity:1}
-  .card-title{font-weight:600;font-size:12px;text-shadow:0 1px 2px rgba(0,0,0,0.5)}
-  .card-date{font-size:11px;text-shadow:0 1px 2px rgba(0,0,0,0.5)}
-  .card-placeholder{display:flex;align-items:center;justify-content:center;color:#aaa;font-size:13px;font-weight:500}
+  .card-title{font-weight:600; font-size:12px; text-shadow:0 1px 2px rgba(0,0,0,0.5)}
+  .card-date{font-size:11px; text-shadow:0 1px 2px rgba(0,0,0,0.5)}
+  .card-placeholder{display:flex; align-items:center; justify-content:center; color:#aaa; font-size:14px; font-weight:500}
 
-  .modal{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:50;padding:20px}
+  /* Modal */
+  .modal{position:fixed; inset:0; background:rgba(0,0,0,.85); display:none; align-items:center; justify-content:center; z-index:50; padding:20px}
   .modal.open{display:flex}
-  .modal-content{max-width:90vw;max-height:90vh;display:flex;flex-direction:column;align-items:center;gap:12px}
-  .modal-media{max-width:90vw;max-height:80vh;object-fit:contain;box-shadow:0 8px 32px rgba(0,0,0,.4)}
-  .modal-caption{color:#fff;font-size:14px;line-height:1.5;max-width:600px;text-align:center;padding:0 20px}
-  .modal-close{position:absolute;top:20px;right:20px;width:40px;height:40px;background:rgba(255,255,255,0.9);border:none;border-radius:50%;cursor:pointer;font-size:24px;font-weight:bold;display:flex;align-items:center;justify-content:center;color:#111}
+  .modal-content{max-width:90vw; max-height:90vh; display:flex; flex-direction:column; align-items:center; gap:12px}
+  .modal-media{max-width:90vw; max-height:80vh; object-fit:contain; box-shadow:0 8px 32px rgba(0,0,0,.4)}
+  .modal-caption{color:#fff; font-size:14px; line-height:1.5; max-width:600px; text-align:center; padding:0 20px}
+  .modal-close{position:absolute; top:20px; right:20px; width:40px; height:40px; background:rgba(255,255,255,0.9); border:none; border-radius:50%; cursor:pointer; font-size:24px; font-weight:bold; display:flex; align-items:center; justify-content:center; color:#111}
 
-  @media (max-width: 640px){
-    .dd-toggle{min-width:160px}
+  @media (max-width:640px){
+    :root{ --ui-font:12px; --ui-pad-y:7px; --ui-pad-x:10px; --ui-radius:12px; }
+    .wrap{padding:12px}
+    .bio-top{grid-template-columns:52px 1fr}
+    .bio-avatar{width:52px; height:52px}
   }
 </style>
 </head>
 <body>
 <main class="wrap">
   <div class="toolbar">
-    <button id="btnRefresh" class="btn"><span style="font-size:14px">↻</span> Refresh</button>
+    <button id="btnRefresh" class="btn">
+      <animated-icons id="aiRefresh"
+        src="https://animatedicons.co/get-icon?name=Restart&style=minimalistic&token=13c130bf-0940-48c2-92e3-16b6ffe3b232"
+        trigger="click"
+        attributes='{"variationThumbColour":"#FFFFFF","variationName":"Normal","variationNumber":1,"numberOfGroups":1,"backgroundIsGroup":false,"strokeWidth":1.48,"defaultColours":{"group-1":"#FFFFFFFF","background":"#FFFFFF"}}'
+        height="18" width="18"></animated-icons>
+      Refresh
+    </button>
 
     <div class="dd" id="ddPlatforms">
       <button class="dd-toggle" id="togglePlatforms">
-        <span><span id="labelPlatforms">All Platforms</span><span id="countPlatforms" class="count"></span></span>
-        <span>▾</span>
+        <span class="label-clip" id="labelPlatforms">All Platforms</span>
+        <span>
+          <span id="countPlatforms" class="count"></span>
+          ▾
+        </span>
       </button>
       <div class="dd-menu" id="menuPlatforms"></div>
     </div>
 
     <div class="dd" id="ddStatus">
       <button class="dd-toggle" id="toggleStatus">
-        <span><span id="labelStatus">All Status</span><span id="countStatus" class="count"></span></span>
-        <span>▾</span>
+        <span class="label-clip" id="labelStatus">All Status</span>
+        <span>
+          <span id="countStatus" class="count"></span>
+          ▾
+        </span>
       </button>
       <div class="dd-menu" id="menuStatus"></div>
     </div>
-
-    <span class="spacer"></span>
 
     <div class="menu" id="menu">
       <button id="btnMenu" class="btn-dot" title="Options">···</button>
       <div class="menu-panel">
         <div class="menu-row" id="rowBio">
           <span style="font-weight:600">Show Bio</span>
-          <div id="switchBio" class="switch" role="switch" aria-checked="true" tabindex="0"></div>
+          <div id="switchBio" class="switch on" role="switch" aria-checked="true" tabindex="0"></div>
         </div>
         <div class="menu-note">
-          To edit your bio, open your Notion “Bio Settings” table and update its first row.
+          To edit your bio for this widget, open your Account, find the widget, and click <strong>Edit</strong>.
         </div>
       </div>
     </div>
   </div>
 
-  <section id="bio" class="bio" aria-hidden="true">
+  <section id="bio" class="bio visible" aria-hidden="false">
     <div class="bio-top">
       <img id="bioAvatar" class="bio-avatar" alt="" style="display:none" />
       <div>
@@ -151,6 +198,7 @@
 
 <script>
   const state = {
+    dbId: null,
     items: [],
     filters: { platforms: [], status: [] },
     selectedPlatform: null,
@@ -158,7 +206,8 @@
     bio: null,
     showBio: true,
     ddOpen: null,
-    menuOpen: false
+    menuOpen: false,
+    savedOrder: [], // array de ids (no incluye prioridad de pinned)
   };
 
   const $grid = document.getElementById("grid");
@@ -187,6 +236,7 @@
   const $modalMedia = document.getElementById("modalMedia");
   const $modalCaption = document.getElementById("modalCaption");
   const $modalClose = document.getElementById("modalClose");
+  const $aiRefresh = document.getElementById("aiRefresh");
 
   function openDD(which){ closeDD(); state.ddOpen = which; (which==="p"?$ddPlatforms:$ddStatus).classList.add("open"); }
   function closeDD(){ state.ddOpen=null; $ddPlatforms.classList.remove("open"); $ddStatus.classList.remove("open"); }
@@ -200,14 +250,30 @@
     if(state.menuOpen && !$menu.contains(e.target)) closeMenu();
   });
 
+  function storageKey(){ return state.dbId ? `order-${state.dbId}` : "order-default"; }
+  function loadSavedOrder(){
+    try{
+      const raw = localStorage.getItem(storageKey());
+      state.savedOrder = raw ? JSON.parse(raw) : [];
+    }catch{ state.savedOrder = []; }
+  }
+  function saveOrder(){
+    try{ localStorage.setItem(storageKey(), JSON.stringify(state.savedOrder)); }catch{}
+  }
+
   async function load(){
     const res = await fetch("/api/grid");
     const data = await res.json();
-    if(!data.ok){ console.error(data.error); showError(data.error); return; }
+    if(!data.ok){ console.error(data.error); return; }
+
+    state.dbId = data.dbId || null;
+    loadSavedOrder();
 
     state.items = data.items || [];
     state.filters = data.filters || { platforms: [], status: [] };
     state.bio = data.bio || null;
+
+    // switches
     state.showBio = (localStorage.getItem("showBio") ?? "true")==="true";
     setSwitch($switchBio, state.showBio);
 
@@ -215,13 +281,6 @@
     renderMenus();
     renderGrid();
     updateCounts();
-  }
-
-  function showError(msg){
-    const box = document.createElement("div");
-    box.textContent = String(msg || "Error");
-    box.style.cssText = "background:#FEF3C7;border:1px solid #F59E0B;color:#92400E;padding:8px 10px;border-radius:8px;margin:8px 0;";
-    $grid.before(box);
   }
 
   function formatDate(dateStr){
@@ -271,29 +330,40 @@
   function passStatus(it){ return !state.selectedStatus || it.status===state.selectedStatus; }
   function passFilters(it){ return passPlatform(it) && passStatus(it); }
 
+  function sortWithSavedOrder(arr){
+    // pinned primero, luego por order guardado, luego por fecha desc
+    const orderIndex = Object.fromEntries(state.savedOrder.map((id, i) => [id, i]));
+    return arr.slice().sort((a, b) => {
+      if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+      const ai = orderIndex[a.id] ?? Infinity;
+      const bi = orderIndex[b.id] ?? Infinity;
+      if (ai !== bi) return ai - bi;
+      const da = a.date ? new Date(a.date) : 0;
+      const dbb = b.date ? new Date(b.date) : 0;
+      return (dbb - da); // desc
+    });
+  }
+
   function updateCounts(){
     const filtered = state.items.filter(passFilters);
     $countPlatforms.textContent = state.selectedPlatform ? `(${filtered.length})` : "";
     $countStatus.textContent = state.selectedStatus ? `(${filtered.length})` : "";
   }
 
-  /* ----------------- RENDER GRID + DRAG & DROP ----------------- */
   function renderGrid(){
-    // Construir lista filtrada + índice absoluto en state.items
-    const filteredIdxs = [];
-    const items = [];
-    state.items.forEach((it, idx) => {
-      if (passFilters(it)) { filteredIdxs.push(idx); items.push(it); }
-    });
+    // ordenar con pinned + orden guardado + fecha; después filtrar; limitar a 12
+    const ordered = sortWithSavedOrder(state.items);
+    const items = ordered.filter(passFilters).slice(0, 12);
 
     if(items.length===0){
       $grid.innerHTML = Array(12).fill(0).map(()=>`<div class="card card-placeholder">No Content</div>`).join("");
       return;
     }
 
-    $grid.innerHTML = items.map((it, i)=>{
-      const pin = it.pinned ? `<i class="fa-solid fa-thumbtack pin" aria-hidden="true"></i>` : "";
-      const play = it.isVideo ? `<i class="fa-solid fa-play play-icon" aria-hidden="true"></i>` : "";
+    $grid.innerHTML = items.map((it, index)=>{
+      const badges = [];
+      if(it.isVideo) badges.push(`<i class="fa-solid fa-play" aria-hidden="true" title="Video"></i>`);
+      if(it.pinned)  badges.push(`<i class="fa-solid fa-thumbtack" aria-hidden="true" title="Pinned"></i>`);
       let media = "";
       if(it.image){
         if(it.isVideo){
@@ -304,87 +374,93 @@
       }else{
         media = `<div class="card-placeholder">No Content</div>`;
       }
-      return `<article class="card" draggable="true" data-index="${i}" data-item='${JSON.stringify(it).replace(/'/g,"&apos;")}'>
-        ${pin}${play}${media}
+      return `<article class="card" draggable="true" data-index="${index}" data-id="${it.id}" data-item='${JSON.stringify(it).replace(/'/g,"&apos;")}'>
+        <div class="badge">${badges.join("")}</div>
+        ${media}
         <div class="card-overlay">
           <div class="card-title">${escapeHtml(it.title||"")}</div>
           <div class="card-date">${formatDate(it.date)}</div>
         </div></article>`;
     }).join("");
 
-    // --- Drag & drop wiring ---
-    let dragStartFilteredIndex = null;
-    let didDrag = false;
-
-    const cards = [...$grid.querySelectorAll(".card")];
-
-    cards.forEach(card => {
-      card.addEventListener("dragstart", (e) => {
-        didDrag = true;
-        dragStartFilteredIndex = Number(card.dataset.index);
-        card.classList.add("dragging");
-        e.dataTransfer.effectAllowed = "move";
-      });
-
-      card.addEventListener("dragend", () => {
-        card.classList.remove("dragging");
-        cards.forEach(c => c.classList.remove("drag-over"));
-        // pequeña espera para que un posible click posterior no abra el modal
-        setTimeout(()=>{ didDrag = false; }, 50);
-      });
-
-      card.addEventListener("dragover", (e) => {
-        e.preventDefault();
-        if(!card.classList.contains("dragging")) card.classList.add("drag-over");
-        e.dataTransfer.dropEffect = "move";
-      });
-
-      card.addEventListener("dragleave", () => {
-        card.classList.remove("drag-over");
-      });
-
-      card.addEventListener("drop", (e) => {
-        e.preventDefault();
-        card.classList.remove("drag-over");
-        const dropFilteredIndex = Number(card.dataset.index);
-        if (dragStartFilteredIndex === null || dropFilteredIndex === dragStartFilteredIndex) return;
-
-        // Reordenar en state.items usando índices absolutos
-        const fromAbs = filteredIdxs[dragStartFilteredIndex];
-        const toAbs   = filteredIdxs[dropFilteredIndex];
-
-        const arr = state.items.slice();
-        const [moved] = arr.splice(fromAbs, 1);
-        // ajuste de destino si venía de antes
-        const adjTo = fromAbs < toAbs ? toAbs - 1 : toAbs;
-        arr.splice(adjTo, 0, moved);
-
-        state.items = arr;
-        renderGrid(); // re-pintar con nuevo orden
-      });
-
-      // Click → modal (solo si no fue un drag)
-      card.addEventListener("click", () => {
-        if (didDrag) return;
-        const item = JSON.parse(card.getAttribute("data-item").replace(/&apos;/g,"'"));
-        openModal(item);
-      });
-    });
-
-    // Hover de video (no durante drag)
+    // Hover video play/pause
     [...$grid.querySelectorAll("video")].forEach(vid=>{
       const card = vid.closest(".card");
       card.addEventListener("mouseenter", ()=>{
-        if(card.classList.contains("dragging")) return;
-        if(!vid.src) vid.src = vid.dataset.src;
-        vid.play().catch(()=>{});
+        if(!card.classList.contains("dragging")) {
+          if(!vid.src) vid.src = vid.dataset.src;
+          vid.play().catch(()=>{});
+        }
       });
       card.addEventListener("mouseleave", ()=>{
         vid.pause(); vid.currentTime = 0;
       });
     });
+
+    // Abrir modal al click (si no arrastra)
+    [...$grid.querySelectorAll(".card")].forEach(card=>{
+      card.addEventListener("click", ()=>{
+        if(card.classList.contains("dragging")) return;
+        const item = JSON.parse(card.getAttribute("data-item").replace(/&apos;/g,"'"));
+        openModal(item);
+      });
+    });
+
+    // Drag & drop (reordenación global guardada)
+    enableDnD(items.map(i => i.id));
   }
-  /* ------------------------------------------------------------- */
+
+  function enableDnD(visibleIds){
+    let dragged = null, startIdx = null;
+
+    const cards = [...$grid.querySelectorAll(".card")];
+
+    cards.forEach(card=>{
+      card.addEventListener("dragstart", (e)=>{
+        dragged = card;
+        startIdx = parseInt(card.dataset.index);
+        card.classList.add("dragging");
+        e.dataTransfer.effectAllowed = "move";
+      });
+
+      card.addEventListener("dragend", ()=>{
+        card.classList.remove("dragging");
+        cards.forEach(c => c.classList.remove("drag-over"));
+      });
+
+      card.addEventListener("dragover", (e)=>{
+        e.preventDefault();
+        if(dragged !== card) card.classList.add("drag-over");
+      });
+
+      card.addEventListener("dragleave", ()=>{
+        card.classList.remove("drag-over");
+      });
+
+      card.addEventListener("drop", (e)=>{
+        e.preventDefault();
+        card.classList.remove("drag-over");
+        if(dragged === card) return;
+
+        const from = startIdx;
+        const to   = parseInt(card.dataset.index);
+
+        // Reordenar array visibleIds
+        const vis = visibleIds.slice();
+        const [moved] = vis.splice(from, 1);
+        vis.splice(to, 0, moved);
+
+        // Fusionar con orden guardado global
+        // 1) quita del saved cualquier id visible
+        const remaining = (state.savedOrder || []).filter(id => !visibleIds.includes(id));
+        // 2) nuevo bloque visible, en el mismo tramo superior
+        state.savedOrder = [...vis, ...remaining];
+        saveOrder();
+
+        renderGrid();
+      });
+    });
+  }
 
   function openModal(item){
     $modalMedia.innerHTML = "";
@@ -406,40 +482,35 @@
   }
 
   function renderBio(){
-    if(!state.bio) { $bio.classList.remove("visible"); $bio.setAttribute("aria-hidden","true"); return; }
-
-    $bioUsername.textContent = state.bio.username || "";
-    $bioName.textContent = state.bio.name || "";
-    $bioLines.textContent = (state.bio.textLines || []).join("\n");
-
-    const cleanUrl = (state.bio.url || "").replace(/^https?:\/\//,"");
+    const b = state.bio;
+    if(!b){ $bio.classList.remove("visible"); $bio.setAttribute("aria-hidden","true"); return; }
+    $bioUsername.textContent = b.username || "";
+    $bioName.textContent = b.name || "";
+    $bioLines.textContent = (b.textLines || []).join("\n");
+    const cleanUrl = (b.url || "").replace(/^https?:\/\//,"");
     $bioUrl.textContent = cleanUrl || "";
-    $bioUrl.href = state.bio.url || "#";
+    $bioUrl.href = b.url || "#";
+    if(b.avatar){ $bioAvatar.src = b.avatar; $bioAvatar.style.display = "block"; }
+    else{ $bioAvatar.style.display = "none"; }
 
-    if(state.bio.avatar){
-      $bioAvatar.src = state.bio.avatar;
-      $bioAvatar.style.display = "block";
-    }else{
-      $bioAvatar.style.display = "none";
-    }
-
-    if(state.showBio){
-      $bio.classList.add("visible");
-      $bio.setAttribute("aria-hidden","false");
-    }else{
-      $bio.classList.remove("visible");
-      $bio.setAttribute("aria-hidden","true");
-    }
+    if(state.showBio){ $bio.classList.add("visible"); $bio.setAttribute("aria-hidden","false"); }
+    else{ $bio.classList.remove("visible"); $bio.setAttribute("aria-hidden","true"); }
   }
 
   function setSwitch(el,on){ el.classList.toggle("on",!!on); el.setAttribute("aria-checked",!!on); }
   function toggleBio(){ state.showBio=!state.showBio; localStorage.setItem("showBio",String(state.showBio)); setSwitch($switchBio,state.showBio); renderBio(); }
 
-  $btnRefresh.onclick = ()=>{
+  function handleRefresh(){
+    // Resetea filtros y recarga desde API
     state.selectedPlatform=null; state.selectedStatus=null;
     $labelPlatforms.textContent="All Platforms"; $labelStatus.textContent="All Status";
     load();
-  };
+  }
+
+  $btnRefresh.onclick = handleRefresh;
+  // click del icono animado también refresca
+  $aiRefresh?.addEventListener("click", (e)=>{ e.stopPropagation(); handleRefresh(); });
+
   $togglePlatforms.onclick = e=>{ e.stopPropagation(); state.ddOpen==="p"?closeDD():openDD("p"); };
   $toggleStatus.onclick = e=>{ e.stopPropagation(); state.ddOpen==="s"?closeDD():openDD("s"); };
 
