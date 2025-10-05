@@ -7,7 +7,6 @@
 
 <!-- Font Awesome FREE (pin/play) -->
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
-
 <!-- Animated icon (Refresh) -->
 <script src="https://animatedicons.co/scripts/embed-animated-icons.js"></script>
 
@@ -16,118 +15,124 @@
     --bg:#fff; --text:#111; --muted:#f7f7f7; --border:#e5e7eb; --blue:#1B4B91;
     --container:936px; --gap:2px;
     --ui-font:13px; --ui-pad-y:8px; --ui-pad-x:12px; --ui-radius:14px;
-    --dd-minw:140px; /* ancho reducido de toggles */
+    --dd-minw:140px;
   }
   *{box-sizing:border-box}
   html,body{margin:0;background:var(--bg);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial}
   .wrap{max-width:var(--container);margin:0 auto;padding:14px}
 
-  /* Toolbar centrada y compacta */
+  /* Toolbar centrada */
   .toolbar{
-    display:flex; gap:10px; align-items:center; flex-wrap:wrap;
-    border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:12px;
+    display:flex;gap:10px;align-items:center;flex-wrap:wrap;
+    border-bottom:1px solid var(--border);padding-bottom:10px;margin-bottom:10px;
     justify-content:center;
   }
-  .btn{
-    border:1px solid var(--border); background:#111; color:#fff;
-    padding:var(--ui-pad-y) var(--ui-pad-x); font-weight:700; cursor:pointer;
-    border-radius:10px; font-size:var(--ui-font); display:inline-flex; align-items:center; gap:8px
-  }
-  .btn-dot{
-    width:36px; height:36px; border:2px solid var(--border); background:#fff; cursor:pointer;
-    border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:16px; font-weight:bold
-  }
+  .btn{border:1px solid var(--border);background:#111;color:#fff;
+    padding:var(--ui-pad-y) var(--ui-pad-x);font-weight:700;cursor:pointer;
+    border-radius:10px;font-size:var(--ui-font);display:inline-flex;align-items:center;gap:8px}
+  .btn-ghost{border:2px solid var(--border);background:#fff;color:#444;
+    padding:8px 10px;border-radius:12px;display:inline-flex;align-items:center;gap:8px;cursor:pointer}
+  .btn-icon{width:36px;height:36px;border:2px solid var(--border);background:#fff;
+    border-radius:12px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
 
-  /* Dropdowns compactos con ancho reducido */
+  /* Drawer de filtros (fila bajo toolbar) */
+  .filters-row{display:none;gap:10px;align-items:center;justify-content:center;padding:6px 0 12px;border-bottom:1px solid var(--border);margin-bottom:10px}
+  .filters-row.open{display:flex}
+
+  /* Dropdowns */
   .dd{position:relative}
   .dd-toggle{
-    border:2px solid var(--border); background:#fff; padding:var(--ui-pad-y) var(--ui-pad-x);
-    min-width:var(--dd-minw); max-width:180px; cursor:pointer; display:inline-flex;
-    justify-content:space-between; align-items:center; gap:8px; border-radius:var(--ui-radius);
-    font-weight:600; font-size:var(--ui-font); white-space:nowrap
+    border:2px solid var(--border);background:#f6f6f6;padding:var(--ui-pad-y) var(--ui-pad-x);
+    min-width:var(--dd-minw);max-width:200px;cursor:pointer;display:inline-flex;
+    justify-content:space-between;align-items:center;gap:8px;border-radius:var(--ui-radius);
+    font-weight:600;font-size:var(--ui-font);white-space:nowrap
   }
-  .dd-toggle .label-clip{overflow:hidden; text-overflow:ellipsis}
-  .dd-toggle .count{color:#999; margin-left:6px; font-size:12px; flex-shrink:0}
+  .dd-toggle .label-clip{overflow:hidden;text-overflow:ellipsis}
+  .dd-toggle .count{color:#999;margin-left:6px;font-size:12px;flex-shrink:0}
   .dd-menu{
-    position:absolute; top:calc(100% + 8px); left:0; min-width:100%; background:#fff; border:1px solid var(--border);
-    box-shadow:0 8px 24px rgba(0,0,0,.12); display:none; z-index:30; border-radius:12px; padding:6px
+    position:absolute;top:calc(100% + 8px);left:0;min-width:100%;background:#fff;border:1px solid var(--border);
+    box-shadow:0 8px 24px rgba(0,0,0,.12);display:none;z-index:30;border-radius:12px;padding:6px
   }
   .dd.open .dd-menu{display:block}
-  .dd-item{padding:8px 10px; cursor:pointer; display:flex; align-items:center; gap:10px; font-size:13px; border-radius:8px}
+  .dd-item{padding:8px 10px;cursor:pointer;display:flex;align-items:center;gap:10px;font-size:13px;border-radius:8px}
   .dd-item:hover{background:#f9fafb}
-  .dd-item .radio{width:16px; height:16px; border:2px solid #ddd; border-radius:50%; position:relative; flex-shrink:0}
+  .dd-item .radio{width:16px;height:16px;border:2px solid #ddd;border-radius:50%;position:relative;flex-shrink:0}
   .dd-item.active .radio{border-color:#111}
-  .dd-item.active .radio::after{content:""; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:7px; height:7px; background:#111; border-radius:50%}
+  .dd-item.active .radio::after{content:"";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:7px;height:7px;background:#111;border-radius:50%}
   .dd-item .label{flex:1}
-  .dd-item .count{color:#999; font-size:12px}
+  .dd-item .count{color:#999;font-size:12px}
 
-  /* Bio */
-  .bio{display:none; border:1px solid var(--border); padding:14px; margin:10px 0 12px; border-radius:12px}
-  .bio.visible{display:block}
-  .bio-top{display:grid; grid-template-columns:56px 1fr; gap:10px; align-items:center; margin-bottom:4px}
-  .bio-avatar{width:56px; height:56px; border-radius:50%; object-fit:cover; background:#eee}
-  .bio-username{font-weight:800; font-size:16px}
-  .bio-name{font-weight:600; margin-top:3px; font-size:14px; white-space:nowrap}
-  .bio-lines{white-space:pre-wrap; margin:8px 0; line-height:1.45; font-size:14px}
-  .bio-link a{color:var(--blue); text-decoration:none; font-weight:600; font-size:14px}
-
-  /* Menú */
+  /* Menú … solo para Bio */
   .menu{position:relative}
   .menu-panel{
-    position:absolute; right:0; top:calc(100% + 8px); min-width:260px; background:#fff; border:1px solid var(--border);
-    box-shadow:0 8px 24px rgba(0,0,0,.12); display:none; z-index:40; border-radius:12px; padding:10px
+    position:absolute;right:0;top:calc(100% + 8px);min-width:260px;background:#fff;border:1px solid var(--border);
+    box-shadow:0 8px 24px rgba(0,0,0,.12);display:none;z-index:40;border-radius:12px;padding:10px
   }
   .menu.open .menu-panel{display:block}
-  .menu-row{display:flex; align-items:center; justify-content:space-between; padding:10px; border-radius:8px; cursor:pointer}
+  .menu-row{display:flex;align-items:center;justify-content:space-between;padding:10px;border-radius:8px;cursor:pointer}
   .menu-row:hover{background:#f9fafb}
-  .switch{position:relative; width:42px; height:22px; background:#ddd; cursor:pointer; border-radius:12px}
-  .switch::after{content:""; position:absolute; top:2px; left:2px; width:18px; height:18px; background:#fff; transition:transform .18s; border-radius:50%; box-shadow:0 1px 3px rgba(0,0,0,.2)}
+  .switch{position:relative;width:42px;height:22px;background:#ddd;cursor:pointer;border-radius:12px}
+  .switch::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;background:#fff;transition:transform .18s;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,.2)}
   .switch.on{background:#111}.switch.on::after{transform:translateX(20px)}
-  .menu-note{color:#6b7280; font-size:12px; padding:8px 0; margin-top:8px; border-top:1px solid var(--border); line-height:1.4}
+  .menu-note{color:#6b7280;font-size:12px;padding:8px 0;margin-top:8px;border-top:1px solid var(--border);line-height:1.4}
+
+  /* Bio */
+  .bio{display:none;border:1px solid var(--border);padding:14px;margin:10px 0 12px;border-radius:12px}
+  .bio.visible{display:block}
+  .bio-top{display:grid;grid-template-columns:56px 1fr;gap:10px;align-items:center;margin-bottom:4px}
+  .bio-avatar{width:56px;height:56px;border-radius:50%;object-fit:cover;background:#eee}
+  .bio-username{font-weight:800;font-size:16px}
+  .bio-name{font-weight:600;margin-top:3px;font-size:14px;white-space:nowrap}
+  .bio-lines{white-space:pre-wrap;margin:8px 0;line-height:1.45;font-size:14px}
+  .bio-link a{color:var(--blue);text-decoration:none;font-weight:600;font-size:14px}
 
   /* Grid */
-  .grid{display:grid; grid-template-columns:repeat(3,1fr); gap:var(--gap); margin-top:0}
-  .card{position:relative; background:#f5f5f5; cursor:grab; overflow:hidden; aspect-ratio:4/5; transition:opacity .2s, transform .2s}
-  .card.dragging{opacity:.5; cursor:grabbing; transform:scale(1.05); z-index:100}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--gap);margin-top:0}
+  .card{position:relative;background:#f5f5f5;cursor:grab;overflow:hidden;aspect-ratio:4/5;transition:opacity .2s,transform .2s}
+  .card.dragging{opacity:.5;cursor:grabbing;transform:scale(1.05);z-index:100}
   .card.drag-over{outline:1px solid #e5e7eb}
-  .card-img,.card-video{width:100%; height:100%; object-fit:cover; display:block}
+  .card-img,.card-video{width:100%;height:100%;object-fit:cover;display:block}
 
-  /* Video sin UI nativa */
   .card-video{pointer-events:none}
   .card-video::-webkit-media-controls-enclosure,
   .card-video::-webkit-media-controls{display:none !important;}
 
-  /* Badges arriba derecha (pin/play en blanco) */
-  .badge{position:absolute; top:6px; right:6px; z-index:2; display:flex; gap:6px; align-items:center}
-  .badge i{font-size:13px; color:#fff; filter:drop-shadow(0 1px 2px rgba(0,0,0,.65))}
-  .badge .fa-play{font-size:12px; opacity:.95}
+  /* Badges (pin / play) */
+  .badge{position:absolute;top:6px;right:6px;z-index:2;display:flex;gap:6px;align-items:center}
+  .badge i{font-size:13px;color:#fff;filter:drop-shadow(0 1px 2px rgba(0,0,0,.65))}
+  .badge .fa-play{font-size:12px;opacity:.95}
 
   /* Overlay */
-  .card-overlay{position:absolute; bottom:0; left:0; right:0; background:linear-gradient(to top, rgba(0,0,0,.55) 0%, transparent 100%); padding:8px; display:flex; justify-content:space-between; align-items:flex-end; color:#fff; opacity:0; transition:opacity .18s ease}
+  .card-overlay{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top, rgba(0,0,0,.55) 0%, transparent 100%);padding:8px;display:flex;justify-content:space-between;align-items:flex-end;color:#fff;opacity:0;transition:opacity .18s ease}
   .card:hover .card-overlay{opacity:1}
-  .card-title{font-weight:600; font-size:12px; text-shadow:0 1px 2px rgba(0,0,0,0.5)}
-  .card-title:empty{display:none;} /* <-- oculta títulos vacíos */
-  .card-date{font-size:11px; text-shadow:0 1px 2px rgba(0,0,0,0.5)}
-  .card-placeholder{display:flex; align-items:center; justify-content:center; color:#aaa; font-size:14px; font-weight:500}
+  .card-title{font-weight:600;font-size:12px;text-shadow:0 1px 2px rgba(0,0,0,0.5)}
+  .card-date{font-size:11px;text-shadow:0 1px 2px rgba(0,0,0,0.5)}
+  .card-placeholder{display:flex;align-items:center;justify-content:center;color:#aaa;font-size:14px;font-weight:500}
 
-  /* Modal */
-  .modal{position:fixed; inset:0; background:rgba(0,0,0,.85); display:none; align-items:center; justify-content:center; z-index:50; padding:20px}
+  /* Modal + carrusel */
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:50;padding:20px}
   .modal.open{display:flex}
-  .modal-content{max-width:90vw; max-height:90vh; display:flex; flex-direction:column; align-items:center; gap:12px}
-  .modal-media{max-width:90vw; max-height:80vh; object-fit:contain; box-shadow:0 8px 32px rgba(0,0,0,.4)}
-  .modal-caption{color:#fff; font-size:14px; line-height:1.5; max-width:600px; text-align:center; padding:0 20px}
-  .modal-close{position:absolute; top:20px; right:20px; width:40px; height:40px; background:rgba(255,255,255,0.9); border:none; border-radius:50%; cursor:pointer; font-size:24px; font-weight:bold; display:flex; align-items:center; justify-content:center; color:#111}
+  .modal-content{max-width:90vw;max-height:90vh;display:flex;flex-direction:column;align-items:center;gap:12px}
+  .modal-media{max-width:90vw;max-height:80vh;object-fit:contain;box-shadow:0 8px 32px rgba(0,0,0,.4)}
+  .modal-caption{color:#fff;font-size:14px;line-height:1.5;max-width:600px;text-align:center;padding:0 20px}
+  .modal-close{position:absolute;top:20px;right:20px;width:40px;height:40px;background:rgba(255,255,255,0.9);border:none;border-radius:50%;cursor:pointer;font-size:24px;font-weight:bold;display:flex;align-items:center;justify-content:center;color:#111}
+
+  .modal-nav{position:absolute;top:50%;left:0;right:0;display:flex;justify-content:space-between;align-items:center;pointer-events:none}
+  .nav-btn{pointer-events:auto;width:38px;height:38px;border:none;border-radius:999px;background:rgba(255,255,255,.85);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.25);opacity:.8;transition:opacity .15s}
+  .nav-btn:hover{opacity:1}
+  .nav-btn[disabled]{visibility:hidden}
 
   @media (max-width:640px){
     :root{ --ui-font:12px; --ui-pad-y:7px; --ui-pad-x:10px; --ui-radius:12px; }
     .wrap{padding:12px}
     .bio-top{grid-template-columns:52px 1fr}
-    .bio-avatar{width:52px; height:52px}
+    .bio-avatar{width:52px;height:52px}
   }
 </style>
 </head>
 <body>
 <main class="wrap">
+  <!-- Toolbar -->
   <div class="toolbar">
     <button id="btnRefresh" class="btn">
       <animated-icons id="aiRefresh"
@@ -138,30 +143,12 @@
       Refresh
     </button>
 
-    <div class="dd" id="ddPlatforms">
-      <button class="dd-toggle" id="togglePlatforms">
-        <span class="label-clip" id="labelPlatforms">All Platforms</span>
-        <span>
-          <span id="countPlatforms" class="count"></span>
-          ▾
-        </span>
-      </button>
-      <div class="dd-menu" id="menuPlatforms"></div>
-    </div>
-
-    <div class="dd" id="ddStatus">
-      <button class="dd-toggle" id="toggleStatus">
-        <span class="label-clip" id="labelStatus">All Status</span>
-        <span>
-          <span id="countStatus" class="count"></span>
-          ▾
-        </span>
-      </button>
-      <div class="dd-menu" id="menuStatus"></div>
-    </div>
+    <button id="btnFilter" class="btn-icon" title="Filter">
+      <i class="fa-solid fa-sliders"></i>
+    </button>
 
     <div class="menu" id="menu">
-      <button id="btnMenu" class="btn-dot" title="Options">···</button>
+      <button id="btnMenu" class="btn-icon" title="Options">…</button>
       <div class="menu-panel">
         <div class="menu-row" id="rowBio">
           <span style="font-weight:600">Show Bio</span>
@@ -174,6 +161,26 @@
     </div>
   </div>
 
+  <!-- Drawer de filtros -->
+  <div id="filtersRow" class="filters-row">
+    <div class="dd" id="ddPlatforms">
+      <button class="dd-toggle" id="togglePlatforms">
+        <span class="label-clip" id="labelPlatforms">All Platforms</span>
+        <span><span id="countPlatforms" class="count"></span> ▾</span>
+      </button>
+      <div class="dd-menu" id="menuPlatforms"></div>
+    </div>
+
+    <div class="dd" id="ddStatus">
+      <button class="dd-toggle" id="toggleStatus">
+        <span class="label-clip" id="labelStatus">All Status</span>
+        <span><span id="countStatus" class="count"></span> ▾</span>
+      </button>
+      <div class="dd-menu" id="menuStatus"></div>
+    </div>
+  </div>
+
+  <!-- Bio -->
   <section id="bio" class="bio visible" aria-hidden="false">
     <div class="bio-top">
       <img id="bioAvatar" class="bio-avatar" alt="" style="display:none" />
@@ -189,9 +196,14 @@
   <section id="grid" class="grid" aria-live="polite"></section>
 </main>
 
+<!-- Modal -->
 <div id="modal" class="modal" aria-hidden="true">
   <button class="modal-close" id="modalClose">×</button>
   <div class="modal-content">
+    <div class="modal-nav">
+      <button id="btnPrev" class="nav-btn" aria-label="Previous">‹</button>
+      <button id="btnNext" class="nav-btn" aria-label="Next">›</button>
+    </div>
     <div id="modalMedia"></div>
     <div id="modalCaption" class="modal-caption"></div>
   </div>
@@ -208,11 +220,17 @@
     showBio: true,
     ddOpen: null,
     menuOpen: false,
-    savedOrder: [], // array de ids (no incluye prioridad de pinned)
+    savedOrder: [],
+    // modal
+    modalAssets: [],
+    modalIndex: 0,
+    modalCaptionText: "",
   };
 
   const $grid = document.getElementById("grid");
   const $btnRefresh = document.getElementById("btnRefresh");
+  const $btnFilter = document.getElementById("btnFilter");
+  const $filtersRow = document.getElementById("filtersRow");
   const $ddPlatforms = document.getElementById("ddPlatforms");
   const $togglePlatforms = document.getElementById("togglePlatforms");
   const $menuPlatforms = document.getElementById("menuPlatforms");
@@ -237,11 +255,14 @@
   const $modalMedia = document.getElementById("modalMedia");
   const $modalCaption = document.getElementById("modalCaption");
   const $modalClose = document.getElementById("modalClose");
+  const $btnPrev = document.getElementById("btnPrev");
+  const $btnNext = document.getElementById("btnNext");
   const $aiRefresh = document.getElementById("aiRefresh");
 
   function openDD(which){ closeDD(); state.ddOpen = which; (which==="p"?$ddPlatforms:$ddStatus).classList.add("open"); }
   function closeDD(){ state.ddOpen=null; $ddPlatforms.classList.remove("open"); $ddStatus.classList.remove("open"); }
   function closeMenu(){ $menu.classList.remove("open"); state.menuOpen=false; }
+  function closeAllToggles(){ closeDD(); closeMenu(); }
 
   document.addEventListener("click",(e)=>{
     if(state.ddOpen){
@@ -253,10 +274,7 @@
 
   function storageKey(){ return state.dbId ? `order-${state.dbId}` : "order-default"; }
   function loadSavedOrder(){
-    try{
-      const raw = localStorage.getItem(storageKey());
-      state.savedOrder = raw ? JSON.parse(raw) : [];
-    }catch{ state.savedOrder = []; }
+    try{ state.savedOrder = JSON.parse(localStorage.getItem(storageKey())) || []; }catch{ state.savedOrder = []; }
   }
   function saveOrder(){
     try{ localStorage.setItem(storageKey(), JSON.stringify(state.savedOrder)); }catch{}
@@ -274,7 +292,6 @@
     state.filters = data.filters || { platforms: [], status: [] };
     state.bio = data.bio || null;
 
-    // switches
     state.showBio = (localStorage.getItem("showBio") ?? "true")==="true";
     setSwitch($switchBio, state.showBio);
 
@@ -292,11 +309,31 @@
   }
 
   function renderMenus(){
+    // construir listas desde items si no hay filtros
+    const items = state.items;
+    const Pset = new Map();
+    const Sset = new Map();
+    items.forEach(it => {
+      if (it.platform) Pset.set(it.platform, (Pset.get(it.platform)||0)+1);
+      if (it.status) Sset.set(it.status, (Sset.get(it.status)||0)+1);
+    });
+
+    let P = state.filters.platforms?.length ? state.filters.platforms.slice() : Array.from(Pset.keys());
+    let S = state.filters.status?.length ? state.filters.status.slice() : Array.from(Sset.keys());
+
+    // ordenar por frecuencia (más usado arriba)
+    P.sort((a,b)=>(Pset.get(b)||0)-(Pset.get(a)||0));
+    S.sort((a,b)=>(Sset.get(b)||0)-(Sset.get(a)||0));
+    // Instagram arriba si existe
+    const igIndex = P.findIndex(x=>x.toLowerCase()==="instagram");
+    if (igIndex>0) { P.splice(0,0,P.splice(igIndex,1)[0]); }
+
+    // Platforms
     const allP = state.items.filter(passStatus);
     const countByPlatform = {};
     allP.forEach(it => countByPlatform[it.platform] = (countByPlatform[it.platform]||0)+1);
-    const P = ["All Platforms", ...(state.filters.platforms || [])];
-    $menuPlatforms.innerHTML = P.map(x=>{
+    const Pmenu = ["All Platforms", ...P];
+    $menuPlatforms.innerHTML = Pmenu.map(x=>{
       const count = x==="All Platforms" ? allP.length : (countByPlatform[x]||0);
       const active = (x==="All Platforms" && !state.selectedPlatform) || state.selectedPlatform===x;
       return `<div class="dd-item ${active?'active':''}" data-v="${x}">
@@ -309,11 +346,12 @@
       closeDD(); renderGrid(); renderMenus(); updateCounts();
     });
 
+    // Status
     const allS = state.items.filter(passPlatform);
     const countByStatus = {};
     allS.forEach(it => countByStatus[it.status] = (countByStatus[it.status]||0)+1);
-    const S = ["All Status", ...(state.filters.status || [])];
-    $menuStatus.innerHTML = S.map(x=>{
+    const Smenu = ["All Status", ...S];
+    $menuStatus.innerHTML = Smenu.map(x=>{
       const count = x==="All Status" ? allS.length : (countByStatus[x]||0);
       const active = (x==="All Status" && !state.selectedStatus) || state.selectedStatus===x;
       return `<div class="dd-item ${active?'active':''}" data-v="${x}">
@@ -332,16 +370,15 @@
   function passFilters(it){ return passPlatform(it) && passStatus(it); }
 
   function sortWithSavedOrder(arr){
-    // pinned primero, luego por order guardado, luego por fecha desc
-    const orderIndex = Object.fromEntries(state.savedOrder.map((id, i) => [id, i]));
-    return arr.slice().sort((a, b) => {
+    const orderIndex = Object.fromEntries((state.savedOrder||[]).map((id,i)=>[id,i]));
+    return arr.slice().sort((a,b)=>{
       if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
       const ai = orderIndex[a.id] ?? Infinity;
       const bi = orderIndex[b.id] ?? Infinity;
       if (ai !== bi) return ai - bi;
       const da = a.date ? new Date(a.date) : 0;
-      const db = b.date ? new Date(b.date) : 0;
-      return (db - da); // desc
+      const dbb = b.date ? new Date(b.date) : 0;
+      return (dbb - da);
     });
   }
 
@@ -352,9 +389,8 @@
   }
 
   function renderGrid(){
-    // ordenar con pinned + orden guardado + fecha; después filtrar; limitar a 12
     const ordered = sortWithSavedOrder(state.items);
-    const items = ordered.filter(passFilters).slice(0, 12);
+    const items = ordered.filter(passFilters).slice(0,12);
 
     if(items.length===0){
       $grid.innerHTML = Array(12).fill(0).map(()=>`<div class="card card-placeholder">No Content</div>`).join("");
@@ -366,25 +402,27 @@
       if(it.isVideo) badges.push(`<i class="fa-solid fa-play" aria-hidden="true" title="Video"></i>`);
       if(it.pinned)  badges.push(`<i class="fa-solid fa-thumbtack" aria-hidden="true" title="Pinned"></i>`);
       let media = "";
-      if(it.image){
-        if(it.isVideo){
-          media = `<video class="card-video" data-src="${it.image}" muted loop playsinline preload="none"></video>`;
+      const first = (it.assets && it.assets[0]) || null;
+      if(first){
+        if(first.type==="video"){
+          media = `<video class="card-video" data-src="${first.url}" muted loop playsinline preload="none"></video>`;
         }else{
-          media = `<img class="card-img" src="${it.image}" alt="${escapeHtml(it.title||"")}" loading="lazy" decoding="async" />`;
+          media = `<img class="card-img" src="${first.url}" alt="${escapeHtml(it.title||"")}" loading="lazy" decoding="async" />`;
         }
       }else{
         media = `<div class="card-placeholder">No Content</div>`;
       }
+      const titleHtml = it.title ? `<div class="card-title">${escapeHtml(it.title)}</div>` : `<div class="card-title"></div>`;
       return `<article class="card" draggable="true" data-index="${index}" data-id="${it.id}" data-item='${JSON.stringify(it).replace(/'/g,"&apos;")}'>
         <div class="badge">${badges.join("")}</div>
         ${media}
         <div class="card-overlay">
-          ${it.title && it.title.trim() ? `<div class="card-title">${escapeHtml(it.title)}</div>` : ``}
+          ${titleHtml}
           <div class="card-date">${formatDate(it.date)}</div>
         </div></article>`;
     }).join("");
 
-    // Hover video play/pause
+    // Hover play/pause en miniaturas de video
     [...$grid.querySelectorAll("video")].forEach(vid=>{
       const card = vid.closest(".card");
       card.addEventListener("mouseenter", ()=>{
@@ -398,7 +436,7 @@
       });
     });
 
-    // Abrir modal al click (si no arrastra)
+    // Click → modal
     [...$grid.querySelectorAll(".card")].forEach(card=>{
       card.addEventListener("click", ()=>{
         if(card.classList.contains("dragging")) return;
@@ -407,13 +445,12 @@
       });
     });
 
-    // Drag & drop (reordenación global guardada)
+    // DnD (incluye cards con video)
     enableDnD(items.map(i => i.id));
   }
 
   function enableDnD(visibleIds){
     let dragged = null, startIdx = null;
-
     const cards = [...$grid.querySelectorAll(".card")];
 
     cards.forEach(card=>{
@@ -423,75 +460,81 @@
         card.classList.add("dragging");
         e.dataTransfer.effectAllowed = "move";
       });
-
       card.addEventListener("dragend", ()=>{
         card.classList.remove("dragging");
         cards.forEach(c => c.classList.remove("drag-over"));
       });
-
       card.addEventListener("dragover", (e)=>{
         e.preventDefault();
         if(dragged !== card) card.classList.add("drag-over");
       });
-
-      card.addEventListener("dragleave", ()=>{
-        card.classList.remove("drag-over");
-      });
-
+      card.addEventListener("dragleave", ()=>{ card.classList.remove("drag-over"); });
       card.addEventListener("drop", (e)=>{
         e.preventDefault();
         card.classList.remove("drag-over");
         if(dragged === card) return;
-
         const from = startIdx;
         const to   = parseInt(card.dataset.index);
-
-        // Reordenar array visibleIds
         const vis = visibleIds.slice();
         const [moved] = vis.splice(from, 1);
         vis.splice(to, 0, moved);
-
-        // Fusionar con orden guardado global
         const remaining = (state.savedOrder || []).filter(id => !visibleIds.includes(id));
         state.savedOrder = [...vis, ...remaining];
         saveOrder();
-
         renderGrid();
       });
     });
   }
 
-  function openModal(item){
+  // Modal + carrusel
+  function renderModalAsset(){
+    const idx = state.modalIndex;
+    const assets = state.modalAssets;
     $modalMedia.innerHTML = "";
-    if(item.isVideo && item.image){
+    const a = assets[idx];
+    if(!a) return;
+    if(a.type==="video"){
       const v = document.createElement("video");
-      v.src = item.image; v.controls = true; v.autoplay = true; v.className = "modal-media";
+      v.src = a.url; v.controls = true; v.autoplay = true; v.className = "modal-media";
       $modalMedia.appendChild(v);
-    }else if(item.image){
+    }else{
       const i = document.createElement("img");
-      i.src = item.image; i.alt = item.title || ""; i.className = "modal-media";
+      i.src = a.url; i.alt = ""; i.className = "modal-media";
       $modalMedia.appendChild(i);
     }
-    $modalCaption.textContent = item.caption || "";
+    // Caption solo en la primera
+    $modalCaption.textContent = (idx===0 ? state.modalCaptionText : "");
+    $btnPrev.disabled = idx <= 0;
+    $btnNext.disabled = idx >= assets.length - 1;
+  }
+
+  function openModal(item){
+    state.modalAssets = (item.assets && item.assets.length) ? item.assets.slice() :
+      (item.image ? [{type:"image", url:item.image}] : []);
+    state.modalIndex = 0;
+    state.modalCaptionText = item.caption || "";
+    renderModalAsset();
     $modal.classList.add("open"); $modal.setAttribute("aria-hidden","false");
   }
   function closeModalFn(){
     $modal.classList.remove("open"); $modal.setAttribute("aria-hidden","true");
     $modalMedia.innerHTML=""; $modalCaption.textContent="";
+    state.modalAssets = []; state.modalIndex = 0; state.modalCaptionText = "";
   }
+  $btnPrev.onclick = ()=>{ if(state.modalIndex>0){ state.modalIndex--; renderModalAsset(); } };
+  $btnNext.onclick = ()=>{ if(state.modalIndex<state.modalAssets.length-1){ state.modalIndex++; renderModalAsset(); } };
 
   function renderBio(){
     const b = state.bio;
     if(!b){ $bio.classList.remove("visible"); $bio.setAttribute("aria-hidden","true"); return; }
     $bioUsername.textContent = b.username || "";
-    $bioName.textContent = b.name || ""
+    $bioName.textContent = b.name || "";
     $bioLines.textContent = (b.textLines || []).join("\n");
     const cleanUrl = (b.url || "").replace(/^https?:\/\//,"");
     $bioUrl.textContent = cleanUrl || "";
     $bioUrl.href = b.url || "#";
     if(b.avatar){ $bioAvatar.src = b.avatar; $bioAvatar.style.display = "block"; }
     else{ $bioAvatar.style.display = "none"; }
-
     if(state.showBio){ $bio.classList.add("visible"); $bio.setAttribute("aria-hidden","false"); }
     else{ $bio.classList.remove("visible"); $bio.setAttribute("aria-hidden","true"); }
   }
@@ -500,22 +543,29 @@
   function toggleBio(){ state.showBio=!state.showBio; localStorage.setItem("showBio",String(state.showBio)); setSwitch($switchBio,state.showBio); renderBio(); }
 
   function handleRefresh(){
-    // Resetea filtros y recarga desde API
     state.selectedPlatform=null; state.selectedStatus=null;
     $labelPlatforms.textContent="All Platforms"; $labelStatus.textContent="All Status";
+    closeAllToggles();
     load();
   }
 
   $btnRefresh.onclick = handleRefresh;
-  // click del icono animado también refresca
   $aiRefresh?.addEventListener("click", (e)=>{ e.stopPropagation(); handleRefresh(); });
 
-  $togglePlatforms.onclick = e=>{ e.stopPropagation(); state.ddOpen==="p"?closeDD():openDD("p"); };
-  $toggleStatus.onclick = e=>{ e.stopPropagation(); state.ddOpen==="s"?closeDD():openDD("s"); };
+  $btnFilter.onclick = ()=>{
+    // auto-apply; solo abre/cierra drawer; al seleccionar opciones se aplica al instante
+    const isOpen = $filtersRow.classList.contains("open");
+    closeAllToggles();
+    if (!isOpen) $filtersRow.classList.add("open");
+  };
+
+  $togglePlatforms.onclick = e=>{ e.stopPropagation(); $filtersRow.classList.add("open"); state.ddOpen==="p"?closeDD():openDD("p"); };
+  $toggleStatus.onclick   = e=>{ e.stopPropagation(); $filtersRow.classList.add("open"); state.ddOpen==="s"?closeDD():openDD("s"); };
 
   $btnMenu.onclick = e=>{
     e.stopPropagation();
-    if(state.menuOpen) closeMenu(); else { $menu.classList.add("open"); state.menuOpen=true; }
+    closeDD();
+    if(state.menuOpen){ closeMenu(); } else { $menu.classList.add("open"); state.menuOpen=true; $filtersRow.classList.remove("open"); }
   };
   $rowBio.onclick = toggleBio;
   $switchBio.onclick = e=>{ e.stopPropagation(); toggleBio(); };
