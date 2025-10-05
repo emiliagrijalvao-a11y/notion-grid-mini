@@ -106,6 +106,7 @@
   .card-overlay{position:absolute; bottom:0; left:0; right:0; background:linear-gradient(to top, rgba(0,0,0,.55) 0%, transparent 100%); padding:8px; display:flex; justify-content:space-between; align-items:flex-end; color:#fff; opacity:0; transition:opacity .18s ease}
   .card:hover .card-overlay{opacity:1}
   .card-title{font-weight:600; font-size:12px; text-shadow:0 1px 2px rgba(0,0,0,0.5)}
+  .card-title:empty{display:none;} /* <-- oculta títulos vacíos */
   .card-date{font-size:11px; text-shadow:0 1px 2px rgba(0,0,0,0.5)}
   .card-placeholder{display:flex; align-items:center; justify-content:center; color:#aaa; font-size:14px; font-weight:500}
 
@@ -339,8 +340,8 @@
       const bi = orderIndex[b.id] ?? Infinity;
       if (ai !== bi) return ai - bi;
       const da = a.date ? new Date(a.date) : 0;
-      const dbb = b.date ? new Date(b.date) : 0;
-      return (dbb - da); // desc
+      const db = b.date ? new Date(b.date) : 0;
+      return (db - da); // desc
     });
   }
 
@@ -378,7 +379,7 @@
         <div class="badge">${badges.join("")}</div>
         ${media}
         <div class="card-overlay">
-          <div class="card-title">${escapeHtml(it.title||"")}</div>
+          ${it.title && it.title.trim() ? `<div class="card-title">${escapeHtml(it.title)}</div>` : ``}
           <div class="card-date">${formatDate(it.date)}</div>
         </div></article>`;
     }).join("");
@@ -451,9 +452,7 @@
         vis.splice(to, 0, moved);
 
         // Fusionar con orden guardado global
-        // 1) quita del saved cualquier id visible
         const remaining = (state.savedOrder || []).filter(id => !visibleIds.includes(id));
-        // 2) nuevo bloque visible, en el mismo tramo superior
         state.savedOrder = [...vis, ...remaining];
         saveOrder();
 
@@ -485,7 +484,7 @@
     const b = state.bio;
     if(!b){ $bio.classList.remove("visible"); $bio.setAttribute("aria-hidden","true"); return; }
     $bioUsername.textContent = b.username || "";
-    $bioName.textContent = b.name || "";
+    $bioName.textContent = b.name || ""
     $bioLines.textContent = (b.textLines || []).join("\n");
     const cleanUrl = (b.url || "").replace(/^https?:\/\//,"");
     $bioUrl.textContent = cleanUrl || "";
