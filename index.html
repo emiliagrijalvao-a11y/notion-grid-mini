@@ -15,7 +15,7 @@
     --bg:#fff; --text:#111; --muted:#f7f7f7; --border:#e5e7eb; --blue:#1B4B91;
     --container:936px; --gap:2px;
     --ui-font:13px; --ui-pad-y:8px; --ui-pad-x:12px; --ui-radius:14px;
-    --dd-minw:140px;
+    --dd-minw:140px; /* ancho mínimo de los toggles */
   }
   *{box-sizing:border-box}
   html,body{margin:0;background:var(--bg);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial}
@@ -30,8 +30,6 @@
   .btn{border:1px solid var(--border);background:#111;color:#fff;
     padding:var(--ui-pad-y) var(--ui-pad-x);font-weight:700;cursor:pointer;
     border-radius:10px;font-size:var(--ui-font);display:inline-flex;align-items:center;gap:8px}
-  .btn-ghost{border:2px solid var(--border);background:#fff;color:#444;
-    padding:8px 10px;border-radius:12px;display:inline-flex;align-items:center;gap:8px;cursor:pointer}
   .btn-icon{width:36px;height:36px;border:2px solid var(--border);background:#fff;
     border-radius:12px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
 
@@ -93,6 +91,7 @@
   .card.drag-over{outline:1px solid #e5e7eb}
   .card-img,.card-video{width:100%;height:100%;object-fit:cover;display:block}
 
+  /* Video sin UI nativa */
   .card-video{pointer-events:none}
   .card-video::-webkit-media-controls-enclosure,
   .card-video::-webkit-media-controls{display:none !important;}
@@ -106,6 +105,7 @@
   .card-overlay{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top, rgba(0,0,0,.55) 0%, transparent 100%);padding:8px;display:flex;justify-content:space-between;align-items:flex-end;color:#fff;opacity:0;transition:opacity .18s ease}
   .card:hover .card-overlay{opacity:1}
   .card-title{font-weight:600;font-size:12px;text-shadow:0 1px 2px rgba(0,0,0,0.5)}
+  .card-title:empty{display:none;} /* oculta títulos vacíos */
   .card-date{font-size:11px;text-shadow:0 1px 2px rgba(0,0,0,0.5)}
   .card-placeholder{display:flex;align-items:center;justify-content:center;color:#aaa;font-size:14px;font-weight:500}
 
@@ -116,7 +116,6 @@
   .modal-media{max-width:90vw;max-height:80vh;object-fit:contain;box-shadow:0 8px 32px rgba(0,0,0,.4)}
   .modal-caption{color:#fff;font-size:14px;line-height:1.5;max-width:600px;text-align:center;padding:0 20px}
   .modal-close{position:absolute;top:20px;right:20px;width:40px;height:40px;background:rgba(255,255,255,0.9);border:none;border-radius:50%;cursor:pointer;font-size:24px;font-weight:bold;display:flex;align-items:center;justify-content:center;color:#111}
-
   .modal-nav{position:absolute;top:50%;left:0;right:0;display:flex;justify-content:space-between;align-items:center;pointer-events:none}
   .nav-btn{pointer-events:auto;width:38px;height:38px;border:none;border-radius:999px;background:rgba(255,255,255,.85);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.25);opacity:.8;transition:opacity .15s}
   .nav-btn:hover{opacity:1}
@@ -231,16 +230,19 @@
   const $btnRefresh = document.getElementById("btnRefresh");
   const $btnFilter = document.getElementById("btnFilter");
   const $filtersRow = document.getElementById("filtersRow");
+
   const $ddPlatforms = document.getElementById("ddPlatforms");
   const $togglePlatforms = document.getElementById("togglePlatforms");
   const $menuPlatforms = document.getElementById("menuPlatforms");
   const $labelPlatforms = document.getElementById("labelPlatforms");
   const $countPlatforms = document.getElementById("countPlatforms");
+
   const $ddStatus = document.getElementById("ddStatus");
   const $toggleStatus = document.getElementById("toggleStatus");
   const $menuStatus = document.getElementById("menuStatus");
   const $labelStatus = document.getElementById("labelStatus");
   const $countStatus = document.getElementById("countStatus");
+
   const $menu = document.getElementById("menu");
   const $btnMenu = document.getElementById("btnMenu");
   const $rowBio = document.getElementById("rowBio");
@@ -251,6 +253,7 @@
   const $bioLines = document.getElementById("bioLines");
   const $bioUrl = document.getElementById("bioUrl");
   const $bioAvatar = document.getElementById("bioAvatar");
+
   const $modal = document.getElementById("modal");
   const $modalMedia = document.getElementById("modalMedia");
   const $modalCaption = document.getElementById("modalCaption");
@@ -273,12 +276,8 @@
   });
 
   function storageKey(){ return state.dbId ? `order-${state.dbId}` : "order-default"; }
-  function loadSavedOrder(){
-    try{ state.savedOrder = JSON.parse(localStorage.getItem(storageKey())) || []; }catch{ state.savedOrder = []; }
-  }
-  function saveOrder(){
-    try{ localStorage.setItem(storageKey(), JSON.stringify(state.savedOrder)); }catch{}
-  }
+  function loadSavedOrder(){ try{ state.savedOrder = JSON.parse(localStorage.getItem(storageKey())) || []; }catch{ state.savedOrder = []; } }
+  function saveOrder(){ try{ localStorage.setItem(storageKey(), JSON.stringify(state.savedOrder)); }catch{} }
 
   async function load(){
     const res = await fetch("/api/grid");
@@ -309,29 +308,16 @@
   }
 
   function renderMenus(){
-    // construir listas desde items si no hay filtros
-    const items = state.items;
-    const Pset = new Map();
-    const Sset = new Map();
-    items.forEach(it => {
-      if (it.platform) Pset.set(it.platform, (Pset.get(it.platform)||0)+1);
-      if (it.status) Sset.set(it.status, (Sset.get(it.status)||0)+1);
-    });
+    // Usamos lo que viene de /api (ya ordenado y con IG arriba); si viniera vacío, calculamos desde items.
+    let P = (state.filters.platforms && state.filters.platforms.length)
+      ? state.filters.platforms.slice() : Array.from(new Set(state.items.map(i=>i.platform).filter(Boolean)));
+    let S = (state.filters.status && state.filters.status.length)
+      ? state.filters.status.slice() : Array.from(new Set(state.items.map(i=>i.status).filter(Boolean)));
 
-    let P = state.filters.platforms?.length ? state.filters.platforms.slice() : Array.from(Pset.keys());
-    let S = state.filters.status?.length ? state.filters.status.slice() : Array.from(Sset.keys());
-
-    // ordenar por frecuencia (más usado arriba)
-    P.sort((a,b)=>(Pset.get(b)||0)-(Pset.get(a)||0));
-    S.sort((a,b)=>(Sset.get(b)||0)-(Sset.get(a)||0));
-    // Instagram arriba si existe
-    const igIndex = P.findIndex(x=>x.toLowerCase()==="instagram");
-    if (igIndex>0) { P.splice(0,0,P.splice(igIndex,1)[0]); }
-
-    // Platforms
     const allP = state.items.filter(passStatus);
     const countByPlatform = {};
     allP.forEach(it => countByPlatform[it.platform] = (countByPlatform[it.platform]||0)+1);
+
     const Pmenu = ["All Platforms", ...P];
     $menuPlatforms.innerHTML = Pmenu.map(x=>{
       const count = x==="All Platforms" ? allP.length : (countByPlatform[x]||0);
@@ -346,10 +332,10 @@
       closeDD(); renderGrid(); renderMenus(); updateCounts();
     });
 
-    // Status
     const allS = state.items.filter(passPlatform);
     const countByStatus = {};
     allS.forEach(it => countByStatus[it.status] = (countByStatus[it.status]||0)+1);
+
     const Smenu = ["All Status", ...S];
     $menuStatus.innerHTML = Smenu.map(x=>{
       const count = x==="All Status" ? allS.length : (countByStatus[x]||0);
@@ -377,8 +363,8 @@
       const bi = orderIndex[b.id] ?? Infinity;
       if (ai !== bi) return ai - bi;
       const da = a.date ? new Date(a.date) : 0;
-      const dbb = b.date ? new Date(b.date) : 0;
-      return (dbb - da);
+      const db = b.date ? new Date(b.date) : 0;
+      return (db - da);
     });
   }
 
@@ -401,18 +387,20 @@
       const badges = [];
       if(it.isVideo) badges.push(`<i class="fa-solid fa-play" aria-hidden="true" title="Video"></i>`);
       if(it.pinned)  badges.push(`<i class="fa-solid fa-thumbtack" aria-hidden="true" title="Pinned"></i>`);
-      let media = "";
-      const first = (it.assets && it.assets[0]) || null;
+
+      // Miniatura: primer asset; si no, placeholder
+      let media = `<div class="card-placeholder">No Content</div>`;
+      const first = (it.assets && it.assets[0]) || (it.image ? {type: (/\.(mp4|webm|mov|m4v)$/i.test(it.image) ? "video":"image"), url: it.image} : null);
       if(first){
         if(first.type==="video"){
           media = `<video class="card-video" data-src="${first.url}" muted loop playsinline preload="none"></video>`;
         }else{
           media = `<img class="card-img" src="${first.url}" alt="${escapeHtml(it.title||"")}" loading="lazy" decoding="async" />`;
         }
-      }else{
-        media = `<div class="card-placeholder">No Content</div>`;
       }
-      const titleHtml = it.title ? `<div class="card-title">${escapeHtml(it.title)}</div>` : `<div class="card-title"></div>`;
+
+      const titleHtml = it.title && it.title.trim() ? `<div class="card-title">${escapeHtml(it.title)}</div>` : ``;
+
       return `<article class="card" draggable="true" data-index="${index}" data-id="${it.id}" data-item='${JSON.stringify(it).replace(/'/g,"&apos;")}'>
         <div class="badge">${badges.join("")}</div>
         ${media}
@@ -460,24 +448,33 @@
         card.classList.add("dragging");
         e.dataTransfer.effectAllowed = "move";
       });
+
       card.addEventListener("dragend", ()=>{
         card.classList.remove("dragging");
         cards.forEach(c => c.classList.remove("drag-over"));
       });
+
       card.addEventListener("dragover", (e)=>{
         e.preventDefault();
         if(dragged !== card) card.classList.add("drag-over");
       });
+
       card.addEventListener("dragleave", ()=>{ card.classList.remove("drag-over"); });
+
       card.addEventListener("drop", (e)=>{
         e.preventDefault();
         card.classList.remove("drag-over");
         if(dragged === card) return;
+
         const from = startIdx;
         const to   = parseInt(card.dataset.index);
+
+        // Reordenar array visibleIds
         const vis = visibleIds.slice();
         const [moved] = vis.splice(from, 1);
         vis.splice(to, 0, moved);
+
+        // Fusionar con orden guardado global
         const remaining = (state.savedOrder || []).filter(id => !visibleIds.includes(id));
         state.savedOrder = [...vis, ...remaining];
         saveOrder();
@@ -486,7 +483,7 @@
     });
   }
 
-  // Modal + carrusel
+  /* Modal + carrusel */
   function renderModalAsset(){
     const idx = state.modalIndex;
     const assets = state.modalAssets;
@@ -509,8 +506,8 @@
   }
 
   function openModal(item){
-    state.modalAssets = (item.assets && item.assets.length) ? item.assets.slice() :
-      (item.image ? [{type:"image", url:item.image}] : []);
+    state.modalAssets = (item.assets && item.assets.length) ? item.assets.slice()
+      : (item.image ? [{type: (/\.(mp4|webm|mov|m4v)$/i.test(item.image) ? "video":"image"), url:item.image}] : []);
     state.modalIndex = 0;
     state.modalCaptionText = item.caption || "";
     renderModalAsset();
@@ -524,6 +521,7 @@
   $btnPrev.onclick = ()=>{ if(state.modalIndex>0){ state.modalIndex--; renderModalAsset(); } };
   $btnNext.onclick = ()=>{ if(state.modalIndex<state.modalAssets.length-1){ state.modalIndex++; renderModalAsset(); } };
 
+  /* Bio */
   function renderBio(){
     const b = state.bio;
     if(!b){ $bio.classList.remove("visible"); $bio.setAttribute("aria-hidden","true"); return; }
@@ -535,6 +533,7 @@
     $bioUrl.href = b.url || "#";
     if(b.avatar){ $bioAvatar.src = b.avatar; $bioAvatar.style.display = "block"; }
     else{ $bioAvatar.style.display = "none"; }
+
     if(state.showBio){ $bio.classList.add("visible"); $bio.setAttribute("aria-hidden","false"); }
     else{ $bio.classList.remove("visible"); $bio.setAttribute("aria-hidden","true"); }
   }
@@ -553,7 +552,7 @@
   $aiRefresh?.addEventListener("click", (e)=>{ e.stopPropagation(); handleRefresh(); });
 
   $btnFilter.onclick = ()=>{
-    // auto-apply; solo abre/cierra drawer; al seleccionar opciones se aplica al instante
+    // solo abre/cierra el drawer; la selección se aplica al instante
     const isOpen = $filtersRow.classList.contains("open");
     closeAllToggles();
     if (!isOpen) $filtersRow.classList.add("open");
@@ -564,7 +563,6 @@
 
   $btnMenu.onclick = e=>{
     e.stopPropagation();
-    closeDD();
     if(state.menuOpen){ closeMenu(); } else { $menu.classList.add("open"); state.menuOpen=true; $filtersRow.classList.remove("open"); }
   };
   $rowBio.onclick = toggleBio;
