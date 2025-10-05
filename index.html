@@ -4,6 +4,10 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Notion Grid Widget</title>
+
+<!-- Font Awesome (free) para pin/play -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+
 <style>
   :root{
     --bg:#fff; --text:#111; --muted:#f5f5f5; --border:#e5e7eb; --blue-dark:#1B4B91;
@@ -11,62 +15,68 @@
   }
   *{box-sizing:border-box}
   html,body{margin:0;background:var(--bg);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial}
-  .wrap{max-width:var(--container);margin:0 auto;padding:16px}
+  .wrap{max-width:var(--container);margin:0 auto;padding:12px}
 
-  /* toolbar */
-  .toolbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--border);padding-bottom:12px;margin-bottom:12px}
-  .btn{border:1px solid var(--border);background:#111;color:#fff;padding:10px 16px;font-weight:600;cursor:pointer;border-radius:6px;font-size:14px;display:inline-flex;align-items:center;gap:8px}
+  /* Toolbar compacta */
+  .toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--border);padding:8px 0 10px;margin-bottom:10px}
+  .btn{border:1px solid var(--border);background:#111;color:#fff;padding:8px 12px;font-weight:600;cursor:pointer;border-radius:6px;font-size:13px;display:inline-flex;align-items:center;gap:8px}
   .spacer{flex:1}
-  .btn-dot{width:40px;height:40px;border:2px solid var(--border);background:#fff;cursor:pointer;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:bold}
+  .btn-dot{width:36px;height:36px;border:2px solid var(--border);background:#fff;cursor:pointer;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:bold}
 
-  /* dropdowns */
+  /* Dropdowns compactos */
   .dd{position:relative}
-  .dd-toggle{border:2px solid var(--border);background:#fff;padding:10px 14px;min-width:180px;cursor:pointer;display:inline-flex;justify-content:space-between;align-items:center;gap:8px;border-radius:20px;font-weight:500;font-size:14px}
-  .dd-toggle .count{color:#999;margin-left:4px;font-size:14px}
-  .dd-menu{position:absolute;top:calc(100% + 8px);left:0;min-width:100%;background:#fff;border:1px solid var(--border);box-shadow:0 8px 24px rgba(0,0,0,.12);display:none;z-index:30;border-radius:12px;padding:8px}
+  .dd-toggle{border:2px solid var(--border);background:#fff;padding:8px 12px;min-width:180px;cursor:pointer;display:inline-flex;justify-content:space-between;align-items:center;gap:8px;border-radius:14px;font-weight:500;font-size:13px}
+  .dd-toggle .count{color:#999;margin-left:4px;font-size:13px}
+  .dd-menu{position:absolute;top:calc(100% + 8px);left:0;min-width:100%;background:#fff;border:1px solid var(--border);box-shadow:0 8px 24px rgba(0,0,0,.12);display:none;z-index:30;border-radius:10px;padding:6px}
   .dd.open .dd-menu{display:block}
-  .dd-item{padding:10px 12px;cursor:pointer;display:flex;align-items:center;gap:10px;font-size:14px;border-radius:8px}
+  .dd-item{padding:8px 10px;cursor:pointer;display:flex;align-items:center;gap:8px;font-size:13px;border-radius:8px}
   .dd-item:hover{background:#f9fafb}
-  .dd-item .radio{width:18px;height:18px;border:2px solid #ddd;border-radius:50%;position:relative;flex-shrink:0}
+  .dd-item .radio{width:16px;height:16px;border:2px solid #ddd;border-radius:50%;position:relative;flex-shrink:0}
   .dd-item.active .radio{border-color:#111}
-  .dd-item.active .radio::after{content:"";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:8px;height:8px;background:#111;border-radius:50%}
+  .dd-item.active .radio::after{content:"";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:6px;height:6px;background:#111;border-radius:50%}
   .dd-item .label{flex:1}
-  .dd-item .count{color:#999;font-size:13px}
+  .dd-item .count{color:#999;font-size:12px}
 
   /* Bio */
-  .bio{display:none;border:1px solid var(--border);padding:16px;margin:10px 0 14px}
+  .bio{display:none;border:1px solid var(--border);padding:12px;margin:8px 0 12px;border-radius:10px}
   .bio.visible{display:block}
-  .bio-top{display:grid;grid-template-columns:64px 1fr;gap:12px;align-items:center;margin-bottom:6px}
-  .bio-avatar{width:64px;height:64px;border-radius:50%;object-fit:cover;background:#eee}
-  .bio-username{font-weight:800;font-size:16px}
-  .bio-name{font-weight:600;margin-top:4px;font-size:14px;white-space:nowrap}
-  .bio-lines{white-space:pre-wrap;margin:8px 0;line-height:1.5;font-size:14px}
-  .bio-link a{color:var(--blue-dark);text-decoration:none;font-weight:500;font-size:14px}
+  .bio-top{display:grid;grid-template-columns:56px 1fr;gap:10px;align-items:center;margin-bottom:4px}
+  .bio-avatar{width:56px;height:56px;border-radius:50%;object-fit:cover;background:#eee}
+  .bio-username{font-weight:800;font-size:15px}
+  .bio-name{font-weight:600;margin-top:2px;font-size:13px;white-space:nowrap}
+  .bio-lines{white-space:pre-wrap;margin:6px 0;line-height:1.5;font-size:13px}
+  .bio-link a{color:var(--blue-dark);text-decoration:none;font-weight:500;font-size:13px}
 
-  /* menu */
   .menu{position:relative}
   .menu-panel{position:absolute;right:0;top:calc(100% + 8px);min-width:260px;background:#fff;border:1px solid var(--border);box-shadow:0 8px 24px rgba(0,0,0,.12);display:none;z-index:40;border-radius:12px;padding:10px}
   .menu.open .menu-panel{display:block}
-  .menu-row{display:flex;align-items:center;justify-content:space-between;padding:10px;border-radius:8px;cursor:pointer}
+  .menu-row{display:flex;align-items:center;justify-content:space-between;padding:8px;border-radius:8px;cursor:pointer}
   .menu-row:hover{background:#f9fafb}
-  .switch{position:relative;width:44px;height:24px;background:#ddd;cursor:pointer;border-radius:12px}
-  .switch::after{content:"";position:absolute;top:2px;left:2px;width:20px;height:20px;background:#fff;transition:transform .18s;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,.2)}
-  .switch.on{background:#111}.switch.on::after{transform:translateX(20px)}
+  .switch{position:relative;width:40px;height:22px;background:#ddd;cursor:pointer;border-radius:12px}
+  .switch::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;background:#fff;transition:transform .18s;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+  .switch.on{background:#111}.switch.on::after{transform:translateX(18px)}
   .menu-note{color:#6b7280;font-size:12px;padding:8px 0;margin-top:8px;border-top:1px solid var(--border);line-height:1.4}
 
-  /* grid */
+  /* Grid */
   .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--gap);margin-top:0}
-  .card{position:relative;background:#f5f5f5;cursor:pointer;overflow:hidden;aspect-ratio:4/5}
-  .card-img,.card-video{width:100%;height:100%;object-fit:cover;display:block}
-  .pin{position:absolute;top:8px;right:8px;font-size:16px;filter:drop-shadow(0 1px 3px rgba(0,0,0,.5));z-index:2}
-  .play-icon{position:absolute;top:8px;left:8px;font-size:20px;color:#fff;filter:drop-shadow(0 1px 3px rgba(0,0,0,.6));z-index:2}
-  .card-overlay{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top, rgba(0,0,0,.7) 0%, transparent 100%);padding:10px;display:flex;justify-content:space-between;align-items:flex-end;color:#fff;opacity:0;transition:opacity .18s ease}
-  .card:hover .card-overlay{opacity:1}
-  .card-title{font-weight:600;font-size:13px;text-shadow:0 1px 2px rgba(0,0,0,0.5)}
-  .card-date{font-size:12px;text-shadow:0 1px 2px rgba(0,0,0,0.5)}
-  .card-placeholder{display:flex;align-items:center;justify-content:center;color:#aaa;font-size:14px;font-weight:500}
 
-  /* modal */
+  /* Drag & Drop: cursor + efectos */
+  .card{position:relative;background:#f5f5f5;cursor:grab;overflow:hidden;aspect-ratio:4/5;transition:opacity .2s,transform .2s}
+  .card.dragging{opacity:.5;cursor:grabbing;transform:scale(1.05);z-index:100}
+  .card.drag-over{border:1px solid #e5e7eb}
+
+  .card-img,.card-video{width:100%;height:100%;object-fit:cover;display:block}
+
+  /* Iconos overlay minimalistas */
+  .pin{position:absolute;top:6px;right:6px;font-size:14px;color:#fff;filter:drop-shadow(0 0.5px 1px rgba(0,0,0,.7));z-index:2}
+  .play-icon{position:absolute;top:6px;left:6px;font-size:14px;color:#fff;filter:drop-shadow(0 0.5px 1px rgba(0,0,0,.7));z-index:2}
+
+  .card-overlay{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top, rgba(0,0,0,.7) 0%, transparent 100%);padding:8px;display:flex;justify-content:space-between;align-items:flex-end;color:#fff;opacity:0;transition:opacity .18s ease}
+  .card:hover .card-overlay{opacity:1}
+  .card-title{font-weight:600;font-size:12px;text-shadow:0 1px 2px rgba(0,0,0,0.5)}
+  .card-date{font-size:11px;text-shadow:0 1px 2px rgba(0,0,0,0.5)}
+  .card-placeholder{display:flex;align-items:center;justify-content:center;color:#aaa;font-size:13px;font-weight:500}
+
   .modal{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:50;padding:20px}
   .modal.open{display:flex}
   .modal-content{max-width:90vw;max-height:90vh;display:flex;flex-direction:column;align-items:center;gap:12px}
@@ -74,15 +84,15 @@
   .modal-caption{color:#fff;font-size:14px;line-height:1.5;max-width:600px;text-align:center;padding:0 20px}
   .modal-close{position:absolute;top:20px;right:20px;width:40px;height:40px;background:rgba(255,255,255,0.9);border:none;border-radius:50%;cursor:pointer;font-size:24px;font-weight:bold;display:flex;align-items:center;justify-content:center;color:#111}
 
-  /* alert */
-  .alert{background:#fff7da;border:1px solid #f2e3a3;color:#7a5d00;border-radius:10px;padding:10px 12px;margin:6px 0;display:none}
-  .alert.show{display:block}
+  @media (max-width: 640px){
+    .dd-toggle{min-width:160px}
+  }
 </style>
 </head>
 <body>
 <main class="wrap">
   <div class="toolbar">
-    <button id="btnRefresh" class="btn"><span style="font-size:16px">↻</span> Refresh</button>
+    <button id="btnRefresh" class="btn"><span style="font-size:14px">↻</span> Refresh</button>
 
     <div class="dd" id="ddPlatforms">
       <button class="dd-toggle" id="togglePlatforms">
@@ -110,13 +120,11 @@
           <div id="switchBio" class="switch" role="switch" aria-checked="true" tabindex="0"></div>
         </div>
         <div class="menu-note">
-          To tweak the bio for this widget, open your Account, find your widget and click <strong>Edit</strong>.
+          To edit your bio, open your Notion “Bio Settings” table and update its first row.
         </div>
       </div>
     </div>
   </div>
-
-  <div id="err" class="alert"></div>
 
   <section id="bio" class="bio" aria-hidden="true">
     <div class="bio-top">
@@ -148,7 +156,7 @@
     selectedPlatform: null,
     selectedStatus: null,
     bio: null,
-    showBio: (localStorage.getItem("showBio") ?? "true") === "true",
+    showBio: true,
     ddOpen: null,
     menuOpen: false
   };
@@ -179,58 +187,54 @@
   const $modalMedia = document.getElementById("modalMedia");
   const $modalCaption = document.getElementById("modalCaption");
   const $modalClose = document.getElementById("modalClose");
-  const $err = document.getElementById("err");
 
   function openDD(which){ closeDD(); state.ddOpen = which; (which==="p"?$ddPlatforms:$ddStatus).classList.add("open"); }
   function closeDD(){ state.ddOpen=null; $ddPlatforms.classList.remove("open"); $ddStatus.classList.remove("open"); }
   function closeMenu(){ $menu.classList.remove("open"); state.menuOpen=false; }
 
   document.addEventListener("click",(e)=>{
-    if (state.ddOpen) {
+    if(state.ddOpen){
       const el = state.ddOpen==="p"?$ddPlatforms:$ddStatus;
-      if (!el.contains(e.target)) closeDD();
+      if(!el.contains(e.target)) closeDD();
     }
-    if (state.menuOpen && !$menu.contains(e.target)) closeMenu();
+    if(state.menuOpen && !$menu.contains(e.target)) closeMenu();
   });
 
   async function load(){
-    $err.classList.remove("show");
-    $err.textContent = "";
-    try{
-      const res = await fetch("/api/grid");
-      const data = await res.json();
-      if(!data.ok){
-        $err.textContent = data.error || "Unknown error";
-        $err.classList.add("show");
-      }
-      state.items = data.items || [];
-      state.filters = data.filters || { platforms: [], status: [] };
-      state.bio = data.bio || null;
-      setSwitch($switchBio, state.showBio);
-      renderBio();
-      renderMenus();
-      renderGrid();
-      updateCounts();
-    }catch(e){
-      $err.textContent = e.message || String(e);
-      $err.classList.add("show");
-      state.items = []; state.bio = null;
-      renderGrid(); renderBio();
-    }
+    const res = await fetch("/api/grid");
+    const data = await res.json();
+    if(!data.ok){ console.error(data.error); showError(data.error); return; }
+
+    state.items = data.items || [];
+    state.filters = data.filters || { platforms: [], status: [] };
+    state.bio = data.bio || null;
+    state.showBio = (localStorage.getItem("showBio") ?? "true")==="true";
+    setSwitch($switchBio, state.showBio);
+
+    renderBio();
+    renderMenus();
+    renderGrid();
+    updateCounts();
+  }
+
+  function showError(msg){
+    const box = document.createElement("div");
+    box.textContent = String(msg || "Error");
+    box.style.cssText = "background:#FEF3C7;border:1px solid #F59E0B;color:#92400E;padding:8px 10px;border-radius:8px;margin:8px 0;";
+    $grid.before(box);
   }
 
   function formatDate(dateStr){
     if(!dateStr) return "";
     const d = new Date(dateStr);
     if (isNaN(d)) return "";
-    return d.toLocaleDateString("en-US",{month:"short", day:"numeric"});
+    return d.toLocaleDateString("en-US",{month:"short",day:"numeric"});
   }
 
   function renderMenus(){
     const allP = state.items.filter(passStatus);
     const countByPlatform = {};
     allP.forEach(it => countByPlatform[it.platform] = (countByPlatform[it.platform]||0)+1);
-
     const P = ["All Platforms", ...(state.filters.platforms || [])];
     $menuPlatforms.innerHTML = P.map(x=>{
       const count = x==="All Platforms" ? allP.length : (countByPlatform[x]||0);
@@ -270,18 +274,26 @@
   function updateCounts(){
     const filtered = state.items.filter(passFilters);
     $countPlatforms.textContent = state.selectedPlatform ? `(${filtered.length})` : "";
-    $countStatus.textContent    = state.selectedStatus  ? `(${filtered.length})` : "";
+    $countStatus.textContent = state.selectedStatus ? `(${filtered.length})` : "";
   }
 
+  /* ----------------- RENDER GRID + DRAG & DROP ----------------- */
   function renderGrid(){
-    const items = state.items.filter(passFilters);
+    // Construir lista filtrada + índice absoluto en state.items
+    const filteredIdxs = [];
+    const items = [];
+    state.items.forEach((it, idx) => {
+      if (passFilters(it)) { filteredIdxs.push(idx); items.push(it); }
+    });
+
     if(items.length===0){
       $grid.innerHTML = Array(12).fill(0).map(()=>`<div class="card card-placeholder">No Content</div>`).join("");
       return;
     }
-    $grid.innerHTML = items.map(it=>{
-      const pin = it.pinned ? `<div class="pin">📌</div>` : "";
-      const playIcon = it.isVideo ? `<div class="play-icon">▶</div>` : "";
+
+    $grid.innerHTML = items.map((it, i)=>{
+      const pin = it.pinned ? `<i class="fa-solid fa-thumbtack pin" aria-hidden="true"></i>` : "";
+      const play = it.isVideo ? `<i class="fa-solid fa-play play-icon" aria-hidden="true"></i>` : "";
       let media = "";
       if(it.image){
         if(it.isVideo){
@@ -292,18 +304,78 @@
       }else{
         media = `<div class="card-placeholder">No Content</div>`;
       }
-      return `<article class="card" data-item='${JSON.stringify(it).replace(/'/g,"&apos;")}'>
-        ${pin}${playIcon}${media}
+      return `<article class="card" draggable="true" data-index="${i}" data-item='${JSON.stringify(it).replace(/'/g,"&apos;")}'>
+        ${pin}${play}${media}
         <div class="card-overlay">
           <div class="card-title">${escapeHtml(it.title||"")}</div>
           <div class="card-date">${formatDate(it.date)}</div>
         </div></article>`;
     }).join("");
 
-    // hover video lazy
+    // --- Drag & drop wiring ---
+    let dragStartFilteredIndex = null;
+    let didDrag = false;
+
+    const cards = [...$grid.querySelectorAll(".card")];
+
+    cards.forEach(card => {
+      card.addEventListener("dragstart", (e) => {
+        didDrag = true;
+        dragStartFilteredIndex = Number(card.dataset.index);
+        card.classList.add("dragging");
+        e.dataTransfer.effectAllowed = "move";
+      });
+
+      card.addEventListener("dragend", () => {
+        card.classList.remove("dragging");
+        cards.forEach(c => c.classList.remove("drag-over"));
+        // pequeña espera para que un posible click posterior no abra el modal
+        setTimeout(()=>{ didDrag = false; }, 50);
+      });
+
+      card.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        if(!card.classList.contains("dragging")) card.classList.add("drag-over");
+        e.dataTransfer.dropEffect = "move";
+      });
+
+      card.addEventListener("dragleave", () => {
+        card.classList.remove("drag-over");
+      });
+
+      card.addEventListener("drop", (e) => {
+        e.preventDefault();
+        card.classList.remove("drag-over");
+        const dropFilteredIndex = Number(card.dataset.index);
+        if (dragStartFilteredIndex === null || dropFilteredIndex === dragStartFilteredIndex) return;
+
+        // Reordenar en state.items usando índices absolutos
+        const fromAbs = filteredIdxs[dragStartFilteredIndex];
+        const toAbs   = filteredIdxs[dropFilteredIndex];
+
+        const arr = state.items.slice();
+        const [moved] = arr.splice(fromAbs, 1);
+        // ajuste de destino si venía de antes
+        const adjTo = fromAbs < toAbs ? toAbs - 1 : toAbs;
+        arr.splice(adjTo, 0, moved);
+
+        state.items = arr;
+        renderGrid(); // re-pintar con nuevo orden
+      });
+
+      // Click → modal (solo si no fue un drag)
+      card.addEventListener("click", () => {
+        if (didDrag) return;
+        const item = JSON.parse(card.getAttribute("data-item").replace(/&apos;/g,"'"));
+        openModal(item);
+      });
+    });
+
+    // Hover de video (no durante drag)
     [...$grid.querySelectorAll("video")].forEach(vid=>{
       const card = vid.closest(".card");
       card.addEventListener("mouseenter", ()=>{
+        if(card.classList.contains("dragging")) return;
         if(!vid.src) vid.src = vid.dataset.src;
         vid.play().catch(()=>{});
       });
@@ -311,15 +383,8 @@
         vid.pause(); vid.currentTime = 0;
       });
     });
-
-    // open modal
-    [...$grid.querySelectorAll(".card")].forEach(el=>{
-      el.addEventListener("click", ()=>{
-        const item = JSON.parse(el.getAttribute("data-item").replace(/&apos;/g,"'"));
-        openModal(item);
-      });
-    });
   }
+  /* ------------------------------------------------------------- */
 
   function openModal(item){
     $modalMedia.innerHTML = "";
@@ -341,14 +406,12 @@
   }
 
   function renderBio(){
-    if(!state.bio){
-      $bio.classList.remove("visible");
-      $bio.setAttribute("aria-hidden","true");
-      return;
-    }
+    if(!state.bio) { $bio.classList.remove("visible"); $bio.setAttribute("aria-hidden","true"); return; }
+
     $bioUsername.textContent = state.bio.username || "";
-    $bioName.textContent     = state.bio.name || "";
-    $bioLines.textContent    = (state.bio.textLines || []).join("\n");
+    $bioName.textContent = state.bio.name || "";
+    $bioLines.textContent = (state.bio.textLines || []).join("\n");
+
     const cleanUrl = (state.bio.url || "").replace(/^https?:\/\//,"");
     $bioUrl.textContent = cleanUrl || "";
     $bioUrl.href = state.bio.url || "#";
@@ -378,7 +441,7 @@
     load();
   };
   $togglePlatforms.onclick = e=>{ e.stopPropagation(); state.ddOpen==="p"?closeDD():openDD("p"); };
-  $toggleStatus.onclick    = e=>{ e.stopPropagation(); state.ddOpen==="s"?closeDD():openDD("s"); };
+  $toggleStatus.onclick = e=>{ e.stopPropagation(); state.ddOpen==="s"?closeDD():openDD("s"); };
 
   $btnMenu.onclick = e=>{
     e.stopPropagation();
@@ -393,7 +456,6 @@
 
   const escapeHtml = s=>String(s).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");
 
-  // init
   load();
 </script>
 </body>
