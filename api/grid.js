@@ -1,8 +1,83 @@
-// api/grid.js
+// pages/api/grid.js
 const NOTION_VERSION = "2022-06-28";
 
-const isVideoUrl = (u = "") =>
-  /\.(mp4|mov|m4v|webm)$/i.test(u.split("?")[0] || "");
+/* ----------------------------- helpers ----------------------------- */
+const firstText = (arr = []) => (arr[0]?.plain_text ?? "").trim();
+
+const getTitleFromProps = (p = {}) => {
+  // Busca un título en propiedades típicas
+  const candidates = [
+    p?.Name?.title,
+    p?.Title?.title,
+  ];
+  for (const c of candidates) {
+    if (Array.isArray(c) && c.length) {
+      const t = firstText(c);
+      if (t) return t; // <- SIN "Untitled"
+    }
+  }
+  // También permite Rich Text si alguien lo puso ahí
+  const rtCandidates = [
+    p?.Name?.rich_text,
+    p?.Title?.rich_text,
+  ];
+  for (const c of rtCandidates) {
+    if (Array.isArray(c) && c.length) {
+      const t = firstText(c);
+      if (t) return t;
+    }
+  }
+  return ""; // vacío si no hay
+};
+
+const getUrlFromProps = (p = {}, keys = ["URL", "Url", "Link", "Website", "Web", "Sitio"]) => {
+  for (const k of keys) {
+    if (p[k]?.type === "url" && p[k]?.url) return p[k].url;
+    // A veces lo almacenan como rich_text
+    if (p[k]?.rich_text?.length) {
+      const t = firstText(p[k].rich_text);
+      if (t) return t;
+    }
+  }
+  return null;
+};
+
+const getDateFromProps = (p = {}) => {
+  const keys = ["Publish Date", "Fecha", "Date"];
+  for (const k of keys) {
+    const d = p?.[k]?.date?.start;
+    if (d) return d;
+  }
+  return null;
+};
+
+const getSelect = (p, keyList) => {
+  for (const k of keyList) {
+    const v = p?.[k]?.select?.name;
+    if (v) return v;
+  }
+  return null;
+};
+const getCheckbox = (p, keyList) => {
+  for (const k of keyList) {
+    const v = p?.[k]?.checkbox;
+    if (typeof v === "boolean") return v;
+  }
+  return false;
+};
+
+const isHidden = (props = {}) => {
+  // Campos explícitos
+  if (getCheckbox(props, ["Hidden", "Hide", "Oculto"])) return true;
+  // Cualquier checkbox cuyo nombre contenga hide/hidden/ocult y esté activo
+  for (const [name, val] of Object.entries(props)) {
+    if (val?.type === "checkbox" && val.checkbox) {
+      const n = name.toLowerCase();
+      if (/hide|hidden|ocult/.test(n)) return true;
+    }
+  }
+  return false;
+};
 
 const fileUrl = (f) => {
   if (!f) return null;
@@ -11,50 +86,23 @@ const fileUrl = (f) => {
   return null;
 };
 
-const getTitle = (p) =>
-  p?.Name?.title?.[0]?.plain_text ??
-  p?.Title?.title?.[0]?.plain_text ??
-  "Untitled";
-
-const getCaption = (p) =>
-  (p?.Caption?.rich_text || p?.Description?.rich_text || [])
-    .map((t) => t.plain_text)
-    .join(" ")
-    .trim();
-
-const getLink = (p) =>
-  p?.Link?.url || p?.URL?.url || p?.Url?.url || null;
-
-const getSelect = (p, key) => p?.[key]?.select?.name ?? null;
-const getCheckbox = (p, key) => !!p?.[key]?.checkbox;
-
-const getDate = (p) =>
-  p?.Date?.date?.start ||
-  p?.Fecha?.date?.start ||
-  p?.Published?.date?.start ||
-  null;
-
-const getImage = (p) =>
-  fileUrl(
-    p?.Image?.files?.[0] ||
-    p?.Attachment?.files?.[0] ||
-    p?.Cover?.files?.[0]
-  );
-
-const isHidden = (props = {}) => {
-  if (getCheckbox(props, "Hidden")) return true;
-  if (getCheckbox(props, "Hide")) return true;
-  if (getCheckbox(props, "Oculto")) return true;
-  for (const [name, val] of Object.entries(props)) {
-    if (val?.type === "checkbox") {
-      const n = name.toLowerCase();
-      if ((/hide|hidden|ocult/).test(n) && val.checkbox) return true;
+const getFirstFileUrlFromProps = (p = {}, keys = ["Image", "Attachment", "Cover", "Imagen", "Adjunto"]) => {
+  for (const k of keys) {
+    const files = p?.[k]?.files;
+    if (Array.isArray(files) && files.length) {
+      const url = fileUrl(files[0]);
+      if (url) return url;
     }
   }
-  return false;
+  return null;
 };
 
-async function notionQueryAll(databaseId, token) {
+const isVideoUrl = (url = "") => {
+  const u = url.split("?")[0].toLowerCase();
+  return /\.(mp4|mov|webm|m4v|avi|mkv)$/.test(u);
+};
+
+async function notionQueryAll(databaseId, token, body = {}) {
   const url = `https://api.notion.com/v1/databases/${databaseId}/query`;
   let has_more = true, next_cursor, results = [];
   while (has_more) {
@@ -68,7 +116,7 @@ async function notionQueryAll(databaseId, token) {
       body: JSON.stringify({
         page_size: 100,
         start_cursor: next_cursor,
-        sorts: [{ timestamp: "last_edited_time", direction: "descending" }],
+        ...body,
       }),
     });
     if (!res.ok) throw new Error(`Notion ${res.status}: ${await res.text()}`);
@@ -80,134 +128,139 @@ async function notionQueryAll(databaseId, token) {
   return results;
 }
 
-async function getBioFromDb(bioDbId, token) {
-  if (!bioDbId) return null;
-  const rows = await notionQueryAll(bioDbId, token);
-  if (!rows.length) return null;
-
-  // Tomamos la fila más reciente
-  const page = rows[0];
-  const p = page.properties || {};
-
-  // Campos esperados en Notion (Bio Settings):
-  // Name (title)   → display name/categoría
-  // Username (text)
-  // Lines   (text, multiline)  → 1 línea por \n
-  // URL     (url)
-  // Avatar  (files) → 1er archivo como avatar
-  const avatar = fileUrl(p?.Avatar?.files?.[0]);
-  const username =
-    (p?.Username?.rich_text || [])
-      .map((t) => t.plain_text)
-      .join("")
-      .trim() || null;
-
-  const lines =
-    (p?.Lines?.rich_text || [])
-      .map((t) => t.plain_text)
-      .join("\n")
-      .split("\n")
-      .map((s) => s.trim())
-      .filter(Boolean);
-
-  return {
-    username: username || "@your_username",
-    name: getTitle(p) || "Grid Content Planner",
-    textLines: lines || [],
-    url: p?.URL?.url || process.env.BIO_FALLBACK_URL || "https://websitelink.com",
-    avatar: avatar || "",
-  };
+async function notionQueryFirst(databaseId, token, body = {}) {
+  const url = `https://api.notion.com/v1/databases/${databaseId}/query`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Notion-Version": NOTION_VERSION,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      page_size: 1,
+      ...body,
+    }),
+  });
+  if (!res.ok) throw new Error(`Notion ${res.status}: ${await res.text()}`);
+  const data = await res.json();
+  const item = (data.results || [])[0];
+  return item || null;
 }
 
+/* ----------------------------- handler ----------------------------- */
 export default async function handler(req, res) {
   try {
     const token = process.env.NOTION_TOKEN;
     const db = process.env.NOTION_DATABASE_ID;
-    const bioDb = process.env.BIO_DATABASE_ID;
+    const bioDb = process.env.BIO_SETTINGS_DATABASE_ID; // opcional
 
     if (!token || !db) {
       return res.status(200).json({ ok: false, error: "Missing NOTION envs" });
     }
 
-    // BIO: primero intento Notion (Bio Settings). Si no hay, uso fallback de envs (si existieran)
-    const bioFromDb = await getBioFromDb(bioDb, token);
-    const bio = bioFromDb || {
-      username: process.env.BIO_USERNAME || "@your_username",
-      name: process.env.BIO_NAME || "Grid Content Planner",
-      textLines: (process.env.BIO_TEXT || "")
-        .split("\n").map(s => s.trim()).filter(Boolean),
-      url: process.env.BIO_URL || process.env.BIO_FALLBACK_URL || "https://websitelink.com",
-      avatar: process.env.BIO_AVATAR || "",
-    };
+    // ---- BIO (desde Notion si hay BIO_SETTINGS_DATABASE_ID; si no, desde envs) ----
+    let bio = null;
+    if (bioDb) {
+      const row = await notionQueryFirst(bioDb, token, {
+        sorts: [{ timestamp: "last_edited_time", direction: "descending" }],
+      });
+      if (row) {
+        const p = row.properties || {};
+        const username =
+          getTitleFromProps({ Name: p?.Username }) ||
+          getTitleFromProps({ Name: p?.User }) ||
+          (p?.Username?.rich_text?.length ? firstText(p?.Username?.rich_text) : "");
+        const name =
+          getTitleFromProps(p) || // si la DB tiene columna Name como title
+          getTitleFromProps({ Name: p?.["Display Name"] }) ||
+          (p?.["Display Name"]?.rich_text?.length ? firstText(p["Display Name"].rich_text) : "");
 
-    // GRID
-    const pages = await notionQueryAll(db, token);
+        let textRaw = "";
+        if (p?.Text?.rich_text?.length) textRaw = p.Text.rich_text.map(x => x.plain_text).join("");
+        else if (p?.Bio?.rich_text?.length) textRaw = p.Bio.rich_text.map(x => x.plain_text).join("");
+        const textLines = textRaw
+          ? textRaw.split("\n").map(s => s.trim()).filter(Boolean)
+          : [];
+
+        const url =
+          getUrlFromProps(p, ["URL", "Website", "Link"]) ||
+          null;
+
+        let avatar = null;
+        if (p?.Avatar?.files?.length) {
+          avatar = fileUrl(p.Avatar.files[0]) || null;
+        }
+
+        bio = {
+          username: username || "",
+          name: name || "",
+          textLines,
+          url: url || "",
+          avatar: avatar || "",
+        };
+      }
+    }
+
+    if (!bio) {
+      // Fallback a variables de entorno (si no hay bioDb o está vacío)
+      bio = {
+        username: process.env.BIO_USERNAME || "",
+        name: process.env.BIO_NAME || "",
+        textLines: (process.env.BIO_TEXT || "")
+          .split("\n").map(s => s.trim()).filter(Boolean),
+        url: process.env.BIO_URL || "",
+        avatar: process.env.BIO_AVATAR || "",
+      };
+    }
+
+    // ---- GRID ----
+    const pages = await notionQueryAll(db, token, {
+      sorts: [{ timestamp: "last_edited_time", direction: "descending" }],
+    });
 
     const raw = pages.map((page) => {
       const p = page.properties || {};
       if (isHidden(p)) return null;
 
-      const pinned =
-        getCheckbox(p, "Pinned") || getCheckbox(p, "Pin") || false;
+      const title = getTitleFromProps(p); // "" si no hay
+      const platform = getSelect(p, ["Platform", "Plataforma", "Plataform"]) || "Other";
+      const status = getSelect(p, ["Status", "Estado"]) || null;
+      const pinned = getCheckbox(p, ["Pinned", "Pin", "Destacado", "Fijado"]) || false;
+      const imageUrl = getFirstFileUrlFromProps(p);
+      const link = getUrlFromProps(p) || null;
+      const date = getDateFromProps(p); // puede ser null
 
-      const platform =
-        getSelect(p, "Platform") ||
-        getSelect(p, "Plataform") ||
-        getSelect(p, "Plataforma") ||
-        "Other";
-
-      const status =
-        getSelect(p, "Status") ||
-        getSelect(p, "Estado") ||
-        null;
-
-      const image = getImage(p);
-      const link = getLink(p) || null;
-
-      // Detectar video:
-      // 1) Checkbox "Video" o "Is Video"
-      // 2) Select "Type" = Video
-      // 3) URL con extensión de video
-      const isVideo =
-        getCheckbox(p, "Video") ||
-        getCheckbox(p, "Is Video") ||
-        (getSelect(p, "Type") || "").toLowerCase() === "video" ||
-        isVideoUrl(image || "");
-
-      const date = getDate(p);
-      const caption = getCaption(p);
+      const isVideo = imageUrl ? isVideoUrl(imageUrl) : false;
 
       return {
         id: page.id,
-        title: getTitle(p),
-        caption,
-        date,
+        title,
         platform,
         status,
         pinned,
+        image: imageUrl,
         isVideo,
-        image,
         link,
+        date,
         _edited: page.last_edited_time || page.created_time,
       };
     }).filter(Boolean);
 
-    // Orden base: pinned primero, luego por fecha desc (o last_edited)
+    // Orden base: pinned primero, luego por última edición (desc)
     raw.sort((a, b) => {
       if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
-      const da = a.date ? new Date(a.date) : new Date(a._edited);
-      const dbb = b.date ? new Date(b.date) : new Date(b._edited);
-      return dbb - da; // desc
+      return new Date(b._edited) - new Date(a._edited);
     });
 
-    // Distintos para filtros
     const items = raw.map(({ _edited, ...x }) => x);
+
     const platforms = Array.from(new Set(items.map(i => i.platform).filter(Boolean)));
     const statuses  = Array.from(new Set(items.map(i => i.status).filter(Boolean)));
 
-    res.status(200).json({
+    return res.status(200).json({
       ok: true,
-      dbId: db,           // <- para guardar orden local por DB
+      dbId: db, // para key de order localStorage
       bio,
       filters: {
         platforms: platforms.length ? platforms : ["Instagram", "Tik Tok", "Other"],
@@ -216,6 +269,6 @@ export default async function handler(req, res) {
       items,
     });
   } catch (e) {
-    res.status(200).json({ ok: false, error: String(e.message || e) });
+    return res.status(200).json({ ok: false, error: String(e.message || e) });
   }
 }
