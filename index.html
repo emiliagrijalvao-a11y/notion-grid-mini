@@ -321,7 +321,9 @@
 
   // ---- data ----
   async function load(){
-    const res = await fetch("/api/grid");
+    const qs = window.location.search;              // ¿la URL trae ?w=... ?
+const suffix = (qs && qs.includes("w=")) ? ("/api/grid"+(qs.includes("?") ? qs : "?"+qs)) : "/api/grid";
+const res = await fetch(suffix);
     const data = await res.json();
     if(!data.ok){ console.error(data.error); return; }
 
