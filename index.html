@@ -391,7 +391,7 @@
 
     const allS = state.items.filter(passPlatform);
     const countByStatus = {};
-    allS.forEach(it => countByStatus[it.status] = (countByStatus[it.status]||0)+1);
+    allS.forEach(it => countByStatus[it.status] = (countByStatus[it.status)||0)+1);
     const Smenu = ["All Status", ...S];
     $menuStatus.innerHTML = Smenu.map(x=>{
       const count = x==="All Status" ? allS.length : (countByStatus[x]||0);
@@ -660,6 +660,41 @@
 
   // go!
   load();
+</script>
+
+<!-- Modo solo-vista: añade ?readonly=1 a la URL -->
+<script>
+(function () {
+  const params = new URLSearchParams(location.search);
+  const READ_ONLY = params.has('readonly') || params.get('mode') === 'preview';
+  if (!READ_ONLY) return;
+
+  const hide = (sel) => { try { const el = document.querySelector(sel); if (el) el.style.display = "none"; } catch {} };
+
+  // 1) UI sin acciones
+  hide("#btnRefresh");
+  hide("#btnFilter");
+  hide("#menu");
+  try { document.getElementById("filtersRow")?.classList.remove("open"); } catch {}
+
+  // 2) Resetea filtros a “All”
+  try {
+    window.state && (state.selectedPlatform=null, state.selectedStatus=null);
+    const lp = document.getElementById("labelPlatforms");
+    const ls = document.getElementById("labelStatus");
+    if (lp) lp.textContent = "All Platforms";
+    if (ls) ls.textContent = "All Status";
+  } catch {}
+
+  // 3) Bloquear toggles/menú y DnD
+  const block = (el) => { if (!el) return; el.addEventListener("click", e => e.stopPropagation(), { capture: true }); el.style.pointerEvents = "none"; el.style.opacity = ".6"; };
+  block(document.getElementById("togglePlatforms"));
+  block(document.getElementById("toggleStatus"));
+  block(document.getElementById("btnMenu"));
+  window.enableDnD = function () { /* no-op en read-only */ };
+
+  console.log("[Widget] Read-only preview mode ON");
+})();
 </script>
 </body>
 </html>
