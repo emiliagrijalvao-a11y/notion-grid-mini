@@ -106,7 +106,7 @@
   .card-overlay{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top, rgba(0,0,0,.55) 0%, transparent 100%);padding:8px;display:flex;justify-content:space-between;align-items:flex-end;color:#fff;opacity:0;transition:opacity .18s ease}
   .card:hover .card-overlay{opacity:1}
   .card-title{font-weight:600;font-size:12px;text-shadow:0 1px 2px rgba(0,0,0,0.5)}
-  .card-title:empty{display:none;} /* sin “Untitled” */
+  .card-title:empty{display:none;}
   .card-date{font-size:11px;text-shadow:0 1px 2px rgba(0,0,0,0.5)}
   .card-placeholder{display:flex;align-items:center;justify-content:center;color:#aaa;font-size:14px;font-weight:500}
 
@@ -120,7 +120,6 @@
   .modal-media{max-width:90vw;max-height:80vh;object-fit:contain;box-shadow:0 8px 32px rgba(0,0,0,.4)}
   .modal-caption{color:#fff;font-size:14px;line-height:1.5;max-width:600px;text-align:center;padding:0 20px}
 
-  /* Navegación anclada al media, coherente con la X */
   .nav-btn{position:absolute;top:50%;transform:translateY(-50%);width:40px;height:40px;border:none;border-radius:999px;background:rgba(255,255,255,.85);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.25);opacity:.85;transition:opacity .15s}
   .nav-btn:hover{opacity:1}
   .nav-btn.prev{left:8px}
@@ -139,7 +138,7 @@
     .wrap{padding:12px}
     .bio-top{grid-template-columns:52px 1fr}
     .bio-avatar{width:52px;height:52px}
-    .nav-btn{opacity:1} /* en móvil siempre visibles */
+    .nav-btn{opacity:1}
   }
 </style>
 </head>
@@ -229,23 +228,14 @@
   const state = {
     dbId: null,
     items: [],
-    // filtros (listas dinámicas y selección)
     filters: { platforms: [], status: [] },
     selectedPlatform: null,
     selectedStatus: null,
-
-    // bio
     bio: null,
     showBio: true,
-
-    // UI toggles
     ddOpen: null,
     menuOpen: false,
-
-    // orden manual
     savedOrder: [],
-
-    // modal
     modalAssets: [],
     modalIndex: 0,
     modalCaptionText: "",
@@ -315,7 +305,6 @@
   function closeAllToggles(){ closeDD(); closeMenu(); }
 
   document.addEventListener("click",(e)=>{
-    // NO cerramos el drawer de filtros por click fuera (decisión de UX)
     if(state.ddOpen){
       const el = state.ddOpen==="p"?$ddPlatforms:$ddStatus;
       if(!el.contains(e.target)) closeDD();
@@ -359,7 +348,6 @@
   function passFilters(it){ return passPlatform(it) && passStatus(it); }
 
   function renderMenus(){
-    // construir listas dinámicas por frecuencia, con IG primero
     const Pset = new Map(), Sset = new Map();
     state.items.forEach(it => {
       if (it.platform) Pset.set(it.platform, (Pset.get(it.platform)||0)+1);
@@ -407,7 +395,6 @@
       closeDD(); renderGrid(); renderMenus(); updateCounts();
     });
 
-    // labels restauradas si había filtros previos
     $labelPlatforms.textContent = state.selectedPlatform || "All Platforms";
     $labelStatus.textContent = state.selectedStatus || "All Status";
   }
@@ -470,7 +457,6 @@
       </article>`;
     }).join("");
 
-    // Hover play/pause en miniaturas de video (desktop)
     [...$grid.querySelectorAll("video.card-video")].forEach(vid=>{
       const card = vid.closest(".card");
       card.addEventListener("mouseenter", ()=>{
@@ -482,7 +468,6 @@
       card.addEventListener("mouseleave", ()=>{ vid.pause(); vid.currentTime = 0; });
     });
 
-    // Click → modal
     [...$grid.querySelectorAll(".card")].forEach(card=>{
       card.addEventListener("click", ()=>{
         if(card.classList.contains("dragging")) return;
@@ -491,7 +476,6 @@
       });
     });
 
-    // DnD (incluye cards con video). + toque simple para móvil
     enableDnD(items.map(i => i.id));
   }
 
@@ -499,7 +483,6 @@
     let dragged = null, startIdx = null;
     const cards = [...$grid.querySelectorAll(".card")];
 
-    // pointer-based soporte móvil
     cards.forEach(card=>{
       card.addEventListener("dragstart", (e)=>{
         dragged = card; startIdx = parseInt(card.dataset.index); card.classList.add("dragging");
@@ -629,21 +612,19 @@
   function toggleBio(){ state.showBio=!state.showBio; localStorage.setItem("showBio",String(state.showBio)); setSwitch($switchBio,state.showBio); renderBio(); }
 
   function handleRefresh(){
-    // resetea filtros, cierra toggles y recarga
     state.selectedPlatform=null; state.selectedStatus=null;
     saveFilters();
     $labelPlatforms.textContent="All Platforms"; $labelStatus.textContent="All Status";
     closeAllToggles();
-    load();
+    load().catch(()=>{});
   }
 
   $btnRefresh.onclick = handleRefresh;
   $aiRefresh?.addEventListener("click", (e)=>{ e.stopPropagation(); handleRefresh(); });
 
-  // Reglas de apertura/cierre
   $btnFilter.onclick = ()=>{
     const isOpen = $filtersRow.classList.contains("open");
-    closeMenu(); // abrir Filter cierra el menú …
+    closeMenu();
     if (isOpen) $filtersRow.classList.remove("open");
     else $filtersRow.classList.add("open");
   };
@@ -652,14 +633,14 @@
 
   $btnMenu.onclick = e=>{
     e.stopPropagation();
-    closeDD(); // abrir … cierra dropdowns, el drawer permanece
+    closeDD();
     if(state.menuOpen){ closeMenu(); } else { $menu.classList.add("open"); state.menuOpen=true; }
   };
   $rowBio.onclick = toggleBio;
   $switchBio.onclick = e=>{ e.stopPropagation(); toggleBio(); };
 
-  // go!
-  load();
+  // go (con manejo de errores)
+  try { load().catch(()=>{}); } catch(e){ console.error(e); }
 </script>
 
 <!-- Modo solo-vista: añade ?readonly=1 a la URL -->
@@ -671,13 +652,11 @@
 
   const hide = (sel) => { try { const el = document.querySelector(sel); if (el) el.style.display = "none"; } catch {} };
 
-  // 1) UI sin acciones
   hide("#btnRefresh");
   hide("#btnFilter");
   hide("#menu");
   try { document.getElementById("filtersRow")?.classList.remove("open"); } catch {}
 
-  // 2) Resetea filtros a “All”
   try {
     window.state && (state.selectedPlatform=null, state.selectedStatus=null);
     const lp = document.getElementById("labelPlatforms");
@@ -686,7 +665,6 @@
     if (ls) ls.textContent = "All Status";
   } catch {}
 
-  // 3) Bloquear toggles/menú y DnD
   const block = (el) => { if (!el) return; el.addEventListener("click", e => e.stopPropagation(), { capture: true }); el.style.pointerEvents = "none"; el.style.opacity = ".6"; };
   block(document.getElementById("togglePlatforms"));
   block(document.getElementById("toggleStatus"));
@@ -695,6 +673,44 @@
 
   console.log("[Widget] Read-only preview mode ON");
 })();
+</script>
+
+<!-- Fallback de render (si el script principal falló) -->
+<script>
+window.addEventListener('load', async () => {
+  try {
+    const g = document.getElementById('grid');
+    if (!g) return;
+    if (g.children && g.children.length > 0) return;
+
+    const r = await fetch('/api/grid', { cache: 'no-store' });
+    const d = await r.json();
+    if (!d.ok) {
+      g.innerHTML = `<div class="card card-placeholder">Error: ${ (d.error||'') }</div>`;
+      return;
+    }
+
+    const items = (d.items || []).slice(0, 12);
+    if (items.length === 0) {
+      g.innerHTML = Array(12).fill(0)
+        .map(()=>`<div class="card card-placeholder">No Content</div>`).join('');
+      return;
+    }
+
+    g.innerHTML = items.map(it => {
+      const a = (it.assets && it.assets[0]) || null;
+      const media = !a ? `<div class="card-placeholder">No Content</div>` :
+        (a.type === 'video'
+          ? `<video class="card-video" src="${a.url}" autoplay muted loop playsinline></video>`
+          : `<img class="card-img" src="${a.url || it.image}" alt="">`);
+      return `<article class="card">${media}</article>`;
+    }).join('');
+  } catch (e) {
+    console.error('fallback render error', e);
+    const g = document.getElementById('grid');
+    if (g) g.innerHTML = `<div class="card card-placeholder">Render error</div>`;
+  }
+});
 </script>
 </body>
 </html>
