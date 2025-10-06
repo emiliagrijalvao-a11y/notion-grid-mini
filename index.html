@@ -11,7 +11,7 @@
 <style>
   :root{
     --bg:#fff; --text:#111; --muted:#f7f7f7; --border:#e5e7eb; --blue:#1B4B91;
-    --container:936px; --gap:1px; /* línea más delgada */
+    --container:936px; --gap:1px; /* línea de separación más delgada */
     --ui-font:13px; --ui-pad-y:8px; --ui-pad-x:12px; --ui-radius:14px;
     --dd-minw:140px;
   }
@@ -75,8 +75,9 @@
   .bio-username{font-weight:800;font-size:16px}
   .bio-name{font-weight:600;margin-top:3px;font-size:14px;white-space:nowrap}
   .bio-lines{white-space:pre-wrap;margin:8px 0;line-height:1.45;font-size:14px}
-  .bio-link a{color:var(--blue);text-decoration:none;font-weight:600;font-size:14px}
+  .bio-link a{color:#1B4B91;text-decoration:none;font-weight:600;font-size:14px}
 
+  /* Grid fijo en 3 columnas (desktop y mobile) */
   .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--gap);margin-top:0}
   .card{position:relative;background:#f5f5f5;cursor:grab;overflow:hidden;aspect-ratio:4/5;transition:opacity .2s,transform .2s}
   .card.dragging{opacity:.5;cursor:grabbing;transform:scale(1.05);z-index:100}
@@ -126,6 +127,9 @@
     .bio-avatar{width:52px;height:52px}
     .nav-btn{opacity:1}
   }
+
+  /* Readonly: oculta opciones (menú …). El resto se mantiene igual para previsualizar. */
+  .ro .menu { display:none; }
 </style>
 </head>
 <body>
@@ -206,6 +210,10 @@
 </div>
 
 <script>
+  // --- READONLY por querystring ---
+  const READONLY = new URLSearchParams(window.location.search).get('readonly') === '1';
+  if (READONLY) document.body.classList.add('ro');
+
   const state = {
     dbId: null,
     items: [],
@@ -276,7 +284,7 @@
   function storageKey(){ return state.dbId ? `order-${state.dbId}` : "order-default"; }
   function filtersKey(){ return state.dbId ? `filters-${state.dbId}` : "filters-default"; }
   function loadSavedOrder(){ try{ state.savedOrder = JSON.parse(localStorage.getItem(storageKey())) || []; }catch(e){ state.savedOrder=[]; } }
-  function saveOrder(){ try{ localStorage.setItem(storageKey(), JSON.stringify(state.savedOrder)); }catch(e){} }
+  function saveOrder(){ if (READONLY) return; try{ localStorage.setItem(storageKey(), JSON.stringify(state.savedOrder)); }catch(e){} }
   function loadSavedFilters(){
     try{
       const f = JSON.parse(localStorage.getItem(filtersKey())) || {};
@@ -284,16 +292,14 @@
       state.selectedStatus   = (f.status   !== undefined) ? f.status   : null;
     }catch(e){}
   }
-  function saveFilters(){
-    try{ localStorage.setItem(filtersKey(), JSON.stringify({platform:state.selectedPlatform, status:state.selectedStatus})); }catch(e){}
-  }
+  function saveFilters(){ if (READONLY) return; try{ localStorage.setItem(filtersKey(), JSON.stringify({platform:state.selectedPlatform, status:state.selectedStatus})); }catch(e){} }
   function setSwitch(el,on){ el.classList.toggle("on",!!on); el.setAttribute("aria-checked",!!on); }
   function closeDD(){ state.ddOpen=null; $ddPlatforms.classList.remove("open"); $ddStatus.classList.remove("open"); }
   function openDD(which){ closeDD(); state.ddOpen=which; (which==="p"?$ddPlatforms:$ddStatus).classList.add("open"); }
   function closeMenu(){ $menu.classList.remove("open"); state.menuOpen=false; }
   function closeAllToggles(){ closeDD(); closeMenu(); }
 
-  document.addEventListener("click",(e)=>{
+  document.addEventListener("click",function(e){
     if(state.ddOpen){
       const el = state.ddOpen==="p"?$ddPlatforms:$ddStatus;
       if(!el.contains(e.target)) closeDD();
@@ -338,21 +344,21 @@
 
   function renderMenus(){
     const Pset = new Map(), Sset = new Map();
-    state.items.forEach(it => {
+    state.items.forEach(function(it){
       if (it.platform) Pset.set(it.platform, (Pset.get(it.platform)||0)+1);
       if (it.status)   Sset.set(it.status,   (Sset.get(it.status)||0)+1);
     });
-    let P = Array.from(Pset.keys()), S = Array.from(Sset.keys());
-    P.sort((a,b)=>(Pset.get(b)||0)-(Pset.get(a)||0));
-    S.sort((a,b)=>(Sset.get(b)||0)-(Sset.get(a)||0));
-    const igIndex = P.findIndex(x=>(x||"").toLowerCase()==="instagram");
+    var P = Array.from(Pset.keys()), S = Array.from(Sset.keys());
+    P.sort(function(a,b){ return (Pset.get(b)||0)-(Pset.get(a)||0); });
+    S.sort(function(a,b){ return (Sset.get(b)||0)-(Sset.get(a)||0); });
+    var igIndex = P.findIndex(function(x){ return (x||"").toLowerCase()==="instagram"; });
     if (igIndex>0) { P.splice(0,0,P.splice(igIndex,1)[0]); }
 
     const allP = state.items.filter(passStatus);
     const countByPlatform = {};
-    allP.forEach(it => { countByPlatform[it.platform] = (countByPlatform[it.platform]||0)+1; });
+    allP.forEach(function(it){ countByPlatform[it.platform] = (countByPlatform[it.platform]||0)+1; });
     const Pmenu = ["All Platforms", ...P];
-    $menuPlatforms.innerHTML = Pmenu.map(x=>{
+    $menuPlatforms.innerHTML = Pmenu.map(function(x){
       const count = x==="All Platforms" ? allP.length : (countByPlatform[x]||0);
       const active = (x==="All Platforms" && !state.selectedPlatform) || state.selectedPlatform===x;
       return '<div class="dd-item '+(active?'active':'')+'" data-v="'+x+'">'+
@@ -370,9 +376,9 @@
 
     const allS = state.items.filter(passPlatform);
     const countByStatus = {};
-    allS.forEach(it => { countByStatus[it.status] = (countByStatus[it.status]||0)+1; });
+    allS.forEach(function(it){ countByStatus[it.status] = (countByStatus[it.status]||0)+1; });
     const Smenu = ["All Status", ...S];
-    $menuStatus.innerHTML = Smenu.map(x=>{
+    $menuStatus.innerHTML = Smenu.map(function(x){
       const count = x==="All Status" ? allS.length : (countByStatus[x]||0);
       const active = (x==="All Status" && !state.selectedStatus) || state.selectedStatus===x;
       return '<div class="dd-item '+(active?'active':'')+'" data-v="'+x+'">'+
@@ -440,8 +446,9 @@
       }
 
       var titleHtml = it.title ? '<div class="card-title">'+escapeHtml(it.title)+'</div>' : '<div class="card-title"></div>';
+      var draggable = READONLY ? 'false' : 'true';
 
-      return '<article class="card" draggable="true" data-index="'+index+'" data-id="'+it.id+'" data-item=\''+JSON.stringify(it).replace(/'/g,"&apos;")+'\'>'+
+      return '<article class="card" draggable="'+draggable+'" data-index="'+index+'" data-id="'+it.id+'" data-item=\''+JSON.stringify(it).replace(/'/g,"&apos;")+'\'>'+
         '<div class="badge">'+badges.join("")+'</div>'+
         media+
         '<div class="card-overlay">'+
@@ -469,7 +476,9 @@
       });
     });
 
-    enableDnD(items.map(function(i){ return i.id; }));
+    if (!READONLY) {
+      enableDnD(items.map(function(i){ return i.id; }));
+    }
   }
 
   function enableDnD(visibleIds){
