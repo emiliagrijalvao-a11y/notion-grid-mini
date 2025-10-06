@@ -16,13 +16,13 @@
     --bg:#fff; --text:#111; --muted:#f7f7f7; --border:#e5e7eb; --blue:#1B4B91;
     --container:936px; --gap:2px;
     --ui-font:13px; --ui-pad-y:8px; --ui-pad-x:12px; --ui-radius:14px;
-    --dd-minw:140px; /* ancho reducido de toggles */
+    --dd-minw:140px;
   }
   *{box-sizing:border-box}
   html,body{margin:0;background:var(--bg);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial}
   .wrap{max-width:var(--container);margin:0 auto;padding:14px}
 
-  /* Toolbar centrada */
+  /* Toolbar */
   .toolbar{
     display:flex;gap:10px;align-items:center;flex-wrap:wrap;
     border-bottom:1px solid var(--border);padding-bottom:10px;margin-bottom:10px;
@@ -34,7 +34,7 @@
   .btn-icon{width:36px;height:36px;border:2px solid var(--border);background:#fff;
     border-radius:12px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
 
-  /* Drawer de filtros (fila bajo toolbar) */
+  /* Drawer filtros */
   .filters-row{display:none;gap:10px;align-items:center;justify-content:center;padding:6px 0 12px;border-bottom:1px solid var(--border);margin-bottom:10px}
   .filters-row.open{display:flex}
 
@@ -61,7 +61,7 @@
   .dd-item .label{flex:1}
   .dd-item .count{color:#999;font-size:12px}
 
-  /* Menú … solo para Bio */
+  /* Menú … */
   .menu{position:relative}
   .menu-panel{
     position:absolute;right:0;top:calc(100% + 8px);min-width:260px;background:#fff;border:1px solid var(--border);
@@ -92,12 +92,12 @@
   .card.drag-over{outline:1px solid #e5e7eb}
   .card-img,.card-video{width:100%;height:100%;object-fit:cover;display:block}
 
-  /* Video (thumb) sin UI nativa */
+  /* Video miniatura */
   .card-video{pointer-events:none}
   .card-video::-webkit-media-controls-enclosure,
   .card-video::-webkit-media-controls{display:none !important;}
 
-  /* Badges (pin / play) */
+  /* Badges */
   .badge{position:absolute;top:6px;right:6px;z-index:2;display:flex;gap:6px;align-items:center}
   .badge i{font-size:13px;color:#fff;filter:drop-shadow(0 1px 2px rgba(0,0,0,.65))}
   .badge .fa-play{font-size:12px;opacity:.95}
@@ -120,6 +120,7 @@
   .modal-media{max-width:90vw;max-height:80vh;object-fit:contain;box-shadow:0 8px 32px rgba(0,0,0,.4)}
   .modal-caption{color:#fff;font-size:14px;line-height:1.5;max-width:600px;text-align:center;padding:0 20px}
 
+  /* Nav coherente con la X */
   .nav-btn{position:absolute;top:50%;transform:translateY(-50%);width:40px;height:40px;border:none;border-radius:999px;background:rgba(255,255,255,.85);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.25);opacity:.85;transition:opacity .15s}
   .nav-btn:hover{opacity:1}
   .nav-btn.prev{left:8px}
@@ -305,6 +306,7 @@
   function closeAllToggles(){ closeDD(); closeMenu(); }
 
   document.addEventListener("click",(e)=>{
+    // no cerramos el drawer por click fuera (UX decidida)
     if(state.ddOpen){
       const el = state.ddOpen==="p"?$ddPlatforms:$ddStatus;
       if(!el.contains(e.target)) closeDD();
@@ -321,9 +323,11 @@
 
   // ---- data ----
   async function load(){
-    const qs = window.location.search;              // ¿la URL trae ?w=... ?
-const suffix = (qs && qs.includes("w=")) ? ("/api/grid"+(qs.includes("?") ? qs : "?"+qs)) : "/api/grid";
-const res = await fetch(suffix);
+    // Construye la URL de la API respetando ?w=...
+    const params = new URLSearchParams(location.search);
+    const suffix = params.has('w') ? `/api/grid?${params.toString()}` : '/api/grid';
+
+    const res = await fetch(suffix);
     const data = await res.json();
     if(!data.ok){ console.error(data.error); return; }
 
@@ -459,6 +463,7 @@ const res = await fetch(suffix);
       </article>`;
     }).join("");
 
+    // Hover play/pause miniaturas video
     [...$grid.querySelectorAll("video.card-video")].forEach(vid=>{
       const card = vid.closest(".card");
       card.addEventListener("mouseenter", ()=>{
@@ -470,6 +475,7 @@ const res = await fetch(suffix);
       card.addEventListener("mouseleave", ()=>{ vid.pause(); vid.currentTime = 0; });
     });
 
+    // Click → modal
     [...$grid.querySelectorAll(".card")].forEach(card=>{
       card.addEventListener("click", ()=>{
         if(card.classList.contains("dragging")) return;
@@ -478,6 +484,7 @@ const res = await fetch(suffix);
       });
     });
 
+    // DnD
     enableDnD(items.map(i => i.id));
   }
 
@@ -610,7 +617,7 @@ const res = await fetch(suffix);
     else{ $bio.classList.remove("visible"); $bio.setAttribute("aria-hidden","true"); }
   }
 
-  // ---- events (toolbar / menus) ----
+  // ---- events toolbar ----
   function toggleBio(){ state.showBio=!state.showBio; localStorage.setItem("showBio",String(state.showBio)); setSwitch($switchBio,state.showBio); renderBio(); }
 
   function handleRefresh(){
@@ -641,7 +648,6 @@ const res = await fetch(suffix);
   $rowBio.onclick = toggleBio;
   $switchBio.onclick = e=>{ e.stopPropagation(); toggleBio(); };
 
-  // go (con manejo de errores)
   try { load().catch(()=>{}); } catch(e){ console.error(e); }
 </script>
 
@@ -685,7 +691,11 @@ window.addEventListener('load', async () => {
     if (!g) return;
     if (g.children && g.children.length > 0) return;
 
-    const r = await fetch('/api/grid', { cache: 'no-store' });
+    // Usa el mismo sufijo que el script principal (respeta ?w=...)
+    const params = new URLSearchParams(location.search);
+    const suffix = params.has('w') ? `/api/grid?${params.toString()}` : '/api/grid';
+
+    const r = await fetch(suffix, { cache: 'no-store' });
     const d = await r.json();
     if (!d.ok) {
       g.innerHTML = `<div class="card card-placeholder">Error: ${ (d.error||'') }</div>`;
