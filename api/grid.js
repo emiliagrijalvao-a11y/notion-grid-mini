@@ -1,7 +1,18 @@
 // /api/grid.js  (Vercel Serverless Function)
+// ──────────────────────────────────────────────────────────────────────────────
+// NOTA: Soporta magic-link via ?token=v1.… (AES-256-GCM con SECRET_KEY).
+// Si no hay token en la URL, se comporta EXACTAMENTE como siempre.
+// ──────────────────────────────────────────────────────────────────────────────
+
+import crypto from "crypto";
 
 const NOTION_API = "https://api.notion.com/v1";
 const NOTION_VERSION = "2022-06-28";
+
+// ── MAGIC-LINK (vars internas que podemos sobrescribir desde el token) ───────
+let NOTION_AUTH = process.env.NOTION_TOKEN;          // se usa en todas las llamadas a Notion
+let DB_OVERRIDE = null;                              // para el grid
+let BIO_DB_OVERRIDE = null;                          // para la bio
 
 /* ----------------------------- helpers ----------------------------- */
 function firstText(arr = []) {
@@ -36,14 +47,16 @@ function fileUrl(f) {
 }
 function filesToAssets(p) {
   const files = p?.files || [];
-  return files.map(f => {
-    const url = f.external?.url || f.file?.url || "";
-    const name = f.name || "";
-    const lower = (name || url).toLowerCase();
-    const isVideo = /\.(mp4|webm|mov|m4v|avi|mkv)$/.test(lower);
-    const type = isVideo ? "video" : "image";
-    return { type, url };
-  }).filter(a => a.url);
+  return files
+    .map(f => {
+      const url = f.external?.url || f.file?.url || "";
+      const name = f.name || "";
+      const lower = (name || url).toLowerCase();
+      const isVideo = /\.(mp4|webm|mov|m4v|avi|mkv)$/.test(lower);
+      const type = isVideo ? "video" : "image";
+      return { type, url };
+    })
+    .filter(a => a.url);
 }
 function getTitleFromProps(p = {}) {
   const candidates = [p?.Title?.title, p?.Name?.title];
@@ -103,12 +116,60 @@ function freqSort(arr) {
   return [...new Set(arr)].sort((a, b) => (count[b] || 0) - (count[a] || 0));
 }
 
+/* ----------------------- MAGIC-LINK: helpers token ------------------------ */
+function b64urlToBuf(str) {
+  let s = (str || "").replace(/-/g, "+").replace(/_/g, "/");
+  while (s.length % 4) s += "=";
+  return Buffer.from(s, "base64");
+}
+function parseQuery(req) {
+  // En Vercel, req.url es relativa; usar host para construir URL
+  const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
+  return Object.fromEntries(url.searchParams.entries());
+}
+function tryApplyMagicLink(req) {
+  const { token } = parseQuery(req);
+  if (!token || typeof token !== "string") return;
+
+  // Esperamos formato: v1.salt.iv.tag.data  (base64url cada parte)
+  if (!token.startsWith("v1.")) return;
+  const parts = token.split(".");
+  if (parts.length !== 5) return;
+
+  const secret = process.env.SECRET_KEY || "";
+  if (!secret) return; // sin SECRET_KEY no se intenta
+
+  try {
+    const [, sSalt, sIv, sTag, sData] = parts;
+    const salt = b64urlToBuf(sSalt);
+    const iv   = b64urlToBuf(sIv);
+    const tag  = b64urlToBuf(sTag);
+    const data = b64urlToBuf(sData);
+
+    // Derivamos clave con scrypt (32 bytes)
+    const key = crypto.scryptSync(secret, salt, 32);
+    const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
+    decipher.setAuthTag(tag);
+    const decrypted = Buffer.concat([decipher.update(data), decipher.final()]);
+    const payload = JSON.parse(decrypted.toString("utf8"));
+
+    // payload esperado: { notion:"secret_xxx", db:"...", bioDb?:"..." }
+    if (payload && typeof payload === "object") {
+      if (payload.notion) NOTION_AUTH = payload.notion;
+      if (payload.db) DB_OVERRIDE = payload.db;
+      if (payload.bioDb) BIO_DB_OVERRIDE = payload.bioDb;
+    }
+  } catch {
+    // Silencioso: si falla el descifrado, ignoramos y seguimos con envs.
+  }
+}
+
 /* ----------------------------- Notion ----------------------------- */
 async function notionFetch(path, body) {
   const r = await fetch(`${NOTION_API}${path}`, {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${process.env.NOTION_TOKEN}`,
+      "Authorization": `Bearer ${NOTION_AUTH}`,   // <─ usa la var que puede venir del token
       "Notion-Version": NOTION_VERSION,
       "Content-Type": "application/json",
     },
@@ -124,8 +185,11 @@ async function notionFetch(path, body) {
 /* ----------------------------- handler ----------------------------- */
 export default async function handler(req, res) {
   try {
-    const dbId  = process.env.NOTION_DATABASE_ID;
-    if (!process.env.NOTION_TOKEN || !dbId) {
+    // 0) Intentar sobrescribir credenciales con magic-link (si viene ?token=…)
+    tryApplyMagicLink(req);
+
+    const dbId = DB_OVERRIDE || process.env.NOTION_DATABASE_ID;
+    if (!NOTION_AUTH || !dbId) {
       return res.status(200).json({ ok:false, error:"Missing NOTION_TOKEN or NOTION_DATABASE_ID" });
     }
 
@@ -167,7 +231,11 @@ export default async function handler(req, res) {
 
     // 2) BIO (opcional)
     let bio = null;
-    const bioDb = process.env.BIO_DATABASE_ID || process.env.BIO_SETTINGS_DATABASE_ID;
+    const bioDb =
+      BIO_DB_OVERRIDE ||
+      process.env.BIO_DATABASE_ID ||
+      process.env.BIO_SETTINGS_DATABASE_ID;
+
     if (bioDb) {
       const qb = await notionFetch(`/databases/${bioDb}/query`, {
         page_size: 1,
