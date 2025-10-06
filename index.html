@@ -5,10 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Notion Grid Widget</title>
 
-<!-- Font Awesome (pin/play, filter icon) -->
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
-
-<!-- Animated icon (Refresh) -->
 <script src="https://animatedicons.co/scripts/embed-animated-icons.js"></script>
 
 <style>
@@ -22,7 +19,6 @@
   html,body{margin:0;background:var(--bg);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial}
   .wrap{max-width:var(--container);margin:0 auto;padding:14px}
 
-  /* Toolbar */
   .toolbar{
     display:flex;gap:10px;align-items:center;flex-wrap:wrap;
     border-bottom:1px solid var(--border);padding-bottom:10px;margin-bottom:10px;
@@ -34,11 +30,9 @@
   .btn-icon{width:36px;height:36px;border:2px solid var(--border);background:#fff;
     border-radius:12px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
 
-  /* Drawer filtros */
   .filters-row{display:none;gap:10px;align-items:center;justify-content:center;padding:6px 0 12px;border-bottom:1px solid var(--border);margin-bottom:10px}
   .filters-row.open{display:flex}
 
-  /* Dropdowns */
   .dd{position:relative}
   .dd-toggle{
     border:2px solid var(--border);background:#f6f6f6;padding:var(--ui-pad-y) var(--ui-pad-x);
@@ -61,7 +55,6 @@
   .dd-item .label{flex:1}
   .dd-item .count{color:#999;font-size:12px}
 
-  /* Menú … */
   .menu{position:relative}
   .menu-panel{
     position:absolute;right:0;top:calc(100% + 8px);min-width:260px;background:#fff;border:1px solid var(--border);
@@ -75,7 +68,6 @@
   .switch.on{background:#111}.switch.on::after{transform:translateX(20px)}
   .menu-note{color:#6b7280;font-size:12px;padding:8px 0;margin-top:8px;border-top:1px solid var(--border);line-height:1.4}
 
-  /* Bio */
   .bio{display:none;border:1px solid var(--border);padding:14px;margin:10px 0 12px;border-radius:12px}
   .bio.visible{display:block}
   .bio-top{display:grid;grid-template-columns:56px 1fr;gap:10px;align-items:center;margin-bottom:4px}
@@ -85,24 +77,20 @@
   .bio-lines{white-space:pre-wrap;margin:8px 0;line-height:1.45;font-size:14px}
   .bio-link a{color:var(--blue);text-decoration:none;font-weight:600;font-size:14px}
 
-  /* Grid */
   .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--gap);margin-top:0}
   .card{position:relative;background:#f5f5f5;cursor:grab;overflow:hidden;aspect-ratio:4/5;transition:opacity .2s,transform .2s}
   .card.dragging{opacity:.5;cursor:grabbing;transform:scale(1.05);z-index:100}
   .card.drag-over{outline:1px solid #e5e7eb}
   .card-img,.card-video{width:100%;height:100%;object-fit:cover;display:block}
 
-  /* Video miniatura */
   .card-video{pointer-events:none}
   .card-video::-webkit-media-controls-enclosure,
   .card-video::-webkit-media-controls{display:none !important;}
 
-  /* Badges */
   .badge{position:absolute;top:6px;right:6px;z-index:2;display:flex;gap:6px;align-items:center}
   .badge i{font-size:13px;color:#fff;filter:drop-shadow(0 1px 2px rgba(0,0,0,.65))}
   .badge .fa-play{font-size:12px;opacity:.95}
 
-  /* Overlay */
   .card-overlay{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top, rgba(0,0,0,.55) 0%, transparent 100%);padding:8px;display:flex;justify-content:space-between;align-items:flex-end;color:#fff;opacity:0;transition:opacity .18s ease}
   .card:hover .card-overlay{opacity:1}
   .card-title{font-weight:600;font-size:12px;text-shadow:0 1px 2px rgba(0,0,0,0.5)}
@@ -110,7 +98,6 @@
   .card-date{font-size:11px;text-shadow:0 1px 2px rgba(0,0,0,0.5)}
   .card-placeholder{display:flex;align-items:center;justify-content:center;color:#aaa;font-size:14px;font-weight:500}
 
-  /* Modal + carrusel */
   .modal{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:50;padding:20px}
   .modal.open{display:flex}
   .modal-close{position:absolute;top:20px;right:20px;width:40px;height:40px;background:rgba(255,255,255,0.9);border:none;border-radius:50%;cursor:pointer;font-size:24px;font-weight:bold;display:flex;align-items:center;justify-content:center;color:#111}
@@ -120,7 +107,6 @@
   .modal-media{max-width:90vw;max-height:80vh;object-fit:contain;box-shadow:0 8px 32px rgba(0,0,0,.4)}
   .modal-caption{color:#fff;font-size:14px;line-height:1.5;max-width:600px;text-align:center;padding:0 20px}
 
-  /* Nav coherente con la X */
   .nav-btn{position:absolute;top:50%;transform:translateY(-50%);width:40px;height:40px;border:none;border-radius:999px;background:rgba(255,255,255,.85);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.25);opacity:.85;transition:opacity .15s}
   .nav-btn:hover{opacity:1}
   .nav-btn.prev{left:8px}
@@ -145,7 +131,6 @@
 </head>
 <body>
 <main class="wrap">
-  <!-- Toolbar -->
   <div class="toolbar">
     <button id="btnRefresh" class="btn">
       <animated-icons id="aiRefresh"
@@ -174,7 +159,6 @@
     </div>
   </div>
 
-  <!-- Drawer de filtros -->
   <div id="filtersRow" class="filters-row">
     <div class="dd" id="ddPlatforms">
       <button class="dd-toggle" id="togglePlatforms">
@@ -193,7 +177,6 @@
     </div>
   </div>
 
-  <!-- Bio -->
   <section id="bio" class="bio visible" aria-hidden="false">
     <div class="bio-top">
       <img id="bioAvatar" class="bio-avatar" alt="" style="display:none" />
@@ -206,11 +189,9 @@
     <div class="bio-link"><a id="bioUrl" href="#" target="_blank" rel="noopener"></a></div>
   </section>
 
-  <!-- Grid -->
   <section id="grid" class="grid" aria-live="polite"></section>
 </main>
 
-<!-- Modal -->
 <div id="modal" class="modal" aria-hidden="true">
   <button class="modal-close" id="modalClose">×</button>
   <div class="modal-content">
@@ -242,7 +223,6 @@
     modalCaptionText: "",
   };
 
-  // ---- DOM ----
   const $grid = document.getElementById("grid");
   const $btnRefresh = document.getElementById("btnRefresh");
   const $btnFilter = document.getElementById("btnFilter");
@@ -283,7 +263,6 @@
 
   const $aiRefresh = document.getElementById("aiRefresh");
 
-  // ---- helpers ----
   const escapeHtml = s=>String(s||"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");
   function storageKey(){ return state.dbId ? `order-${state.dbId}` : "order-default"; }
   function filtersKey(){ return state.dbId ? `filters-${state.dbId}` : "filters-default"; }
@@ -306,7 +285,6 @@
   function closeAllToggles(){ closeDD(); closeMenu(); }
 
   document.addEventListener("click",(e)=>{
-    // no cerramos el drawer por click fuera (UX decidida)
     if(state.ddOpen){
       const el = state.ddOpen==="p"?$ddPlatforms:$ddStatus;
       if(!el.contains(e.target)) closeDD();
@@ -321,13 +299,8 @@
     return d.toLocaleDateString("en-US",{month:"short",day:"numeric"});
   }
 
-  // ---- data ----
   async function load(){
-    // Construye la URL de la API respetando ?w=...
-    const params = new URLSearchParams(location.search);
-    const suffix = params.has('w') ? `/api/grid?${params.toString()}` : '/api/grid';
-
-    const res = await fetch(suffix);
+    const res = await fetch("/api/grid");
     const data = await res.json();
     if(!data.ok){ console.error(data.error); return; }
 
@@ -348,7 +321,6 @@
     updateCounts();
   }
 
-  // ---- menus / filtros ----
   function passPlatform(it){ return !state.selectedPlatform || it.platform===state.selectedPlatform; }
   function passStatus(it){ return !state.selectedStatus || it.status===state.selectedStatus; }
   function passFilters(it){ return passPlatform(it) && passStatus(it); }
@@ -411,7 +383,6 @@
     $countStatus.textContent = state.selectedStatus ? `(${filtered.length})` : "";
   }
 
-  // ---- grid + orden ----
   function sortWithSavedOrder(arr){
     const orderIndex = Object.fromEntries((state.savedOrder||[]).map((id,i)=>[id,i]));
     return arr.slice().sort((a,b)=>{
@@ -463,7 +434,6 @@
       </article>`;
     }).join("");
 
-    // Hover play/pause miniaturas video
     [...$grid.querySelectorAll("video.card-video")].forEach(vid=>{
       const card = vid.closest(".card");
       card.addEventListener("mouseenter", ()=>{
@@ -475,7 +445,6 @@
       card.addEventListener("mouseleave", ()=>{ vid.pause(); vid.currentTime = 0; });
     });
 
-    // Click → modal
     [...$grid.querySelectorAll(".card")].forEach(card=>{
       card.addEventListener("click", ()=>{
         if(card.classList.contains("dragging")) return;
@@ -484,7 +453,6 @@
       });
     });
 
-    // DnD
     enableDnD(items.map(i => i.id));
   }
 
@@ -503,7 +471,7 @@
       });
       card.addEventListener("dragover", (e)=>{
         e.preventDefault();
-        if(dragged !== card) card.classList.add("drag-over");
+        if(dragged !== card) card.addEventListener && card.classList.add("drag-over");
       });
       card.addEventListener("dragleave", ()=>{ card.classList.remove("drag-over"); });
       card.addEventListener("drop", (e)=>{
@@ -548,7 +516,6 @@
     });
   }
 
-  // ---- modal / carrusel ----
   function renderModalAsset(){
     const idx = state.modalIndex;
     const a = state.modalAssets[idx];
@@ -600,7 +567,6 @@
     }
   });
 
-  // ---- bio ----
   function renderBio(){
     const b = state.bio;
     if(!b){ $bio.classList.remove("visible"); $bio.setAttribute("aria-hidden","true"); return; }
@@ -617,7 +583,6 @@
     else{ $bio.classList.remove("visible"); $bio.setAttribute("aria-hidden","true"); }
   }
 
-  // ---- events toolbar ----
   function toggleBio(){ state.showBio=!state.showBio; localStorage.setItem("showBio",String(state.showBio)); setSwitch($switchBio,state.showBio); renderBio(); }
 
   function handleRefresh(){
@@ -625,7 +590,7 @@
     saveFilters();
     $labelPlatforms.textContent="All Platforms"; $labelStatus.textContent="All Status";
     closeAllToggles();
-    load().catch(()=>{});
+    load();
   }
 
   $btnRefresh.onclick = handleRefresh;
@@ -648,81 +613,7 @@
   $rowBio.onclick = toggleBio;
   $switchBio.onclick = e=>{ e.stopPropagation(); toggleBio(); };
 
-  try { load().catch(()=>{}); } catch(e){ console.error(e); }
-</script>
-
-<!-- Modo solo-vista: añade ?readonly=1 a la URL -->
-<script>
-(function () {
-  const params = new URLSearchParams(location.search);
-  const READ_ONLY = params.has('readonly') || params.get('mode') === 'preview';
-  if (!READ_ONLY) return;
-
-  const hide = (sel) => { try { const el = document.querySelector(sel); if (el) el.style.display = "none"; } catch {} };
-
-  hide("#btnRefresh");
-  hide("#btnFilter");
-  hide("#menu");
-  try { document.getElementById("filtersRow")?.classList.remove("open"); } catch {}
-
-  try {
-    window.state && (state.selectedPlatform=null, state.selectedStatus=null);
-    const lp = document.getElementById("labelPlatforms");
-    const ls = document.getElementById("labelStatus");
-    if (lp) lp.textContent = "All Platforms";
-    if (ls) ls.textContent = "All Status";
-  } catch {}
-
-  const block = (el) => { if (!el) return; el.addEventListener("click", e => e.stopPropagation(), { capture: true }); el.style.pointerEvents = "none"; el.style.opacity = ".6"; };
-  block(document.getElementById("togglePlatforms"));
-  block(document.getElementById("toggleStatus"));
-  block(document.getElementById("btnMenu"));
-  window.enableDnD = function () { /* no-op en read-only */ };
-
-  console.log("[Widget] Read-only preview mode ON");
-})();
-</script>
-
-<!-- Fallback de render (si el script principal falló) -->
-<script>
-window.addEventListener('load', async () => {
-  try {
-    const g = document.getElementById('grid');
-    if (!g) return;
-    if (g.children && g.children.length > 0) return;
-
-    // Usa el mismo sufijo que el script principal (respeta ?w=...)
-    const params = new URLSearchParams(location.search);
-    const suffix = params.has('w') ? `/api/grid?${params.toString()}` : '/api/grid';
-
-    const r = await fetch(suffix, { cache: 'no-store' });
-    const d = await r.json();
-    if (!d.ok) {
-      g.innerHTML = `<div class="card card-placeholder">Error: ${ (d.error||'') }</div>`;
-      return;
-    }
-
-    const items = (d.items || []).slice(0, 12);
-    if (items.length === 0) {
-      g.innerHTML = Array(12).fill(0)
-        .map(()=>`<div class="card card-placeholder">No Content</div>`).join('');
-      return;
-    }
-
-    g.innerHTML = items.map(it => {
-      const a = (it.assets && it.assets[0]) || null;
-      const media = !a ? `<div class="card-placeholder">No Content</div>` :
-        (a.type === 'video'
-          ? `<video class="card-video" src="${a.url}" autoplay muted loop playsinline></video>`
-          : `<img class="card-img" src="${a.url || it.image}" alt="">`);
-      return `<article class="card">${media}</article>`;
-    }).join('');
-  } catch (e) {
-    console.error('fallback render error', e);
-    const g = document.getElementById('grid');
-    if (g) g.innerHTML = `<div class="card card-placeholder">Render error</div>`;
-  }
-});
+  load();
 </script>
 </body>
 </html>
