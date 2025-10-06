@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Generar Magic-Link — Notion Grid</title>
+  <style>
+    body{font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;margin:0;background:#fafafa;color:#111}
+    .wrap{max-width:720px;margin:0 auto;padding:24px}
+    h1{font-size:20px;margin:0 0 12px}
+    .card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:16px}
+    label{display:block;font-weight:600;margin:12px 0 6px}
+    input{width:100%;padding:10px;border:1px solid #e5e7eb;border-radius:8px;font-size:14px}
+    .btn{margin-top:14px;padding:10px 14px;border-radius:10px;border:1px solid #111;background:#111;color:#fff;font-weight:700;cursor:pointer}
+    .out{margin-top:16px;padding:12px;background:#f6f8fa;border:1px dashed #cbd5e1;border-radius:10px;word-break:break-all}
+    small{color:#6b7280}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <h1>Generar enlace por cliente (magic-link)</h1>
+    <div class="card">
+      <label>Notion Integration Secret <small>(empieza con <code>secret_</code> o <code>ntn_</code>)</small></label>
+      <input id="sec" type="password" placeholder="secret_xxx ó ntn_xxx" />
+
+      <label>Database ID (Grid)</label>
+      <input id="db" type="text" placeholder="p.ej. 28273654be06806bb0b0df777eacd5b2" />
+
+      <label>Bio Settings DB ID (opcional)</label>
+      <input id="bio" type="text" placeholder="(opcional)" />
+
+      <button id="go" class="btn">Generar enlace</button>
+
+      <div id="out" class="out" style="display:none"></div>
+    </div>
+    <p><small>No compartas esta URL en público. Si se filtra, rota el token de la integración en Notion y genera un nuevo enlace.</small></p>
+  </main>
+
+  <script>
+    const $sec = document.getElementById('sec');
+    const $db  = document.getElementById('db');
+    const $bio = document.getElementById('bio');
+    const $out = document.getElementById('out');
+    document.getElementById('go').onclick = async ()=>{
+      $out.style.display = "none"; $out.textContent = "";
+      const notionSecret = $sec.value.trim();
+      const dbId = $db.value.trim();
+      const bioDbId = $bio.value.trim() || null;
+      if(!notionSecret || !dbId){ alert("Faltan campos obligatorios"); return; }
+      const res = await fetch("/api/activate",{
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({ notionSecret, dbId, bioDbId })
+      });
+      const data = await res.json();
+      if(!data.ok){ alert(data.error || "Error"); return; }
+      $out.style.display = "block";
+      $out.innerHTML = `
+        <div><strong>Token:</strong> ${data.token}</div>
+        <div style="margin-top:8px"><strong>Widget URL (para Notion):</strong><br>
+          <a href="${data.widgetUrl}" target="_blank" rel="noopener">${data.widgetUrl}</a>
+        </div>
+        <div style="margin-top:8px"><button onclick="navigator.clipboard.writeText('${data.widgetUrl.replace(/'/g,'\\\'')}')">Copiar URL</button></div>
+      `;
+    };
+  </script>
+</body>
+</html>
