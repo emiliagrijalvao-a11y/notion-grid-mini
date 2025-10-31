@@ -1,219 +1,216 @@
-// /api/grid.js  (Vercel Serverless Function)
-
 const NOTION_API = "https://api.notion.com/v1";
 const NOTION_VERSION = "2022-06-28";
 
-/* ----------------------------- helpers ----------------------------- */
-function firstText(arr = []) {
-  return (arr[0]?.plain_text ?? "").trim();
-}
-function rtText(p) {
-  if (!p) return "";
-  const arr = p.rich_text || p.title || [];
-  return arr.map(x => x.plain_text || "").join("").trim();
-}
-function sel(p) {
-  if (!p) return "";
-  if (p.select && p.select.name) return p.select.name;
-  if (p.status && p.status.name) return p.status.name;
-  return "";
-}
-function checkbox(p) {
-  return !!(p && p.checkbox);
-}
-function dateStr(p) {
-  const v = p?.date?.start || "";
-  return v || "";
-}
-function urlProp(p) {
-  return p?.url || "";
-}
-function fileUrl(f) {
-  if (!f) return null;
-  if (f.type === "file") return f.file?.url || null;
-  if (f.type === "external") return f.external?.url || null;
-  return null;
-}
-function filesToAssets(p) {
-  const files = p?.files || [];
-  return files.map(f => {
-    const url = f.external?.url || f.file?.url || "";
-    const name = f.name || "";
-    const lower = (name || url).toLowerCase();
-    const isVideo = /\.(mp4|webm|mov|m4v|avi|mkv)$/.test(lower);
-    const type = isVideo ? "video" : "image";
-    return { type, url };
-  }).filter(a => a.url);
-}
-function getTitleFromProps(p = {}) {
-  const candidates = [p?.Title?.title, p?.Name?.title];
-  for (const c of candidates) {
-    if (Array.isArray(c) && c.length) {
-      const t = firstText(c);
-      if (t) return t; // sin "Untitled"
-    }
+function pick(a, ...keys){ const o={}; keys.forEach(k=>o[k]=a[k]); return o; }
+function isVideoName(name){ if(!name) return false; const s=name.toLowerCase(); return ['.mp4','.webm','.mov','.m4v','.avi','.mkv'].some(ext=>s.endsWith(ext)); }
+function rollupText(p){ // acepta rollup o rich_text
+  if (!p) return '';
+  if (p.rollup && p.rollup.array && p.rollup.array[0]) {
+    const a = p.rollup.array[0];
+    if (a.title && a.title[0]) return a.title.map(t=>t.plain_text).join('');
+    if (a.rich_text && a.rich_text[0]) return a.rich_text.map(t=>t.plain_text).join('');
+    if (a.name) return a.name;
   }
-  // algunos lo guardan en rich_text
-  const rt = [p?.Title?.rich_text, p?.Name?.rich_text];
-  for (const c of rt) {
-    if (Array.isArray(c) && c.length) {
-      const t = firstText(c);
-      if (t) return t;
-    }
-  }
-  return "";
+  if (Array.isArray(p.rich_text)) return p.rich_text.map(t=>t.plain_text).join('');
+  return '';
 }
-function getUrlFromProps(p = {}, keys = ["URL", "Url", "Link", "Website", "Web", "Sitio"]) {
-  for (const k of keys) {
-    if (p[k]?.type === "url" && p[k]?.url) return p[k].url;
-    if (p[k]?.rich_text?.length) {
-      const t = firstText(p[k].rich_text);
-      if (t) return t;
-    }
-  }
-  return null;
-}
-function getSelect(p, keyList) {
-  for (const k of keyList) {
-    const v = p?.[k]?.select?.name || p?.[k]?.status?.name;
-    if (v) return v;
-  }
-  return null;
-}
-function getCheckbox(p, keyList) {
-  for (const k of keyList) {
-    const v = p?.[k]?.checkbox;
-    if (typeof v === "boolean") return v;
-  }
-  return false;
-}
-function isHidden(props = {}) {
-  if (getCheckbox(props, ["Hidden", "Hide", "Oculto"])) return true;
-  for (const [name, val] of Object.entries(props)) {
-    if (val?.type === "checkbox" && val.checkbox) {
-      const n = name.toLowerCase();
-      if (/hide|hidden|ocult/.test(n)) return true;
-    }
-  }
-  return false;
-}
-function freqSort(arr) {
-  const count = {};
-  arr.forEach(x => { count[x] = (count[x] || 0) + 1; });
-  return [...new Set(arr)].sort((a, b) => (count[b] || 0) - (count[a] || 0));
-}
+function titleText(p){ return Array.isArray(p?.title) ? p.title.map(t=>t.plain_text).join('') : ''; }
+function dateValue(p){ return (p?.date?.start) || (p?.date?.start===null?null:undefined); }
+function multiSelectNames(p){ return Array.isArray(p?.multi_select) ? p.multi_select.map(x=>x.name) : []; }
 
-/* ----------------------------- Notion ----------------------------- */
-async function notionFetch(path, body) {
-  const r = await fetch(`${NOTION_API}${path}`, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${process.env.NOTION_TOKEN}`,
-      "Notion-Version": NOTION_VERSION,
-      "Content-Type": "application/json",
-    },
-    body: body ? JSON.stringify(body) : undefined,
+function extractAssets(props){
+  // soporta Attachment / Files / Media + Links externos (Link, Canva)
+  const out=[];
+  const files = props.Attachment?.files || props.Files?.files || props.Media?.files || [];
+  files.forEach(f=>{
+    const url = f.type==='external' ? f.external.url : f.file.url;
+    out.push({ url, type: isVideoName(f.name) ? 'video' : 'image', source:'attachment' });
   });
-  if (!r.ok) {
-    const t = await r.text().catch(()=> "");
-    throw new Error(`Notion ${r.status}: ${t}`);
+  // si no hay, pero hay Link/Canva
+  if (!out.length){
+    const link = props.Link?.url || props.Canva?.url;
+    if (link) out.push({ url: link, type: isVideoName(link)?'video':'image', source:'link' });
   }
-  return r.json();
+  return out;
 }
 
-/* ----------------------------- handler ----------------------------- */
-export default async function handler(req, res) {
-  try {
-    const dbId  = process.env.NOTION_DATABASE_ID;
-    if (!process.env.NOTION_TOKEN || !dbId) {
-      return res.status(200).json({ ok:false, error:"Missing NOTION_TOKEN or NOTION_DATABASE_ID" });
-    }
+// mapeo tolerante de nombres de propiedades
+const P = {
+  NAME:           ['Name','Post','Título','Title'],
+  DATE:           ['Publish Date','Fecha'],
+  STATUS:         ['Status','Estado'],
+  PLATFORM:       ['Platform','Plataforma','Platforms'],
+  TYPE:           ['Type','Tipo'],
+  OWNER:          ['Owner','Propietario','Responsable'],
 
-    // 1) GRID PAGES
-    const q = await notionFetch(`/databases/${dbId}/query`, {
-      sorts: [{ property: "Publish Date", direction: "descending" }],
-      page_size: 100,
-    });
+  // toggles
+  HIDE:           ['Hide','Hidden','Oculto'],
+  ARCHIVED:       ['Archivado','Archived'],
 
-    const items = [];
-    for (const r of (q.results || [])) {
-      const p = r.properties || {};
-      if (isHidden(p)) continue;
+  // relations + rollups
+  R_CLIENT_ROLL:  ['ClientName','Cliente','Client'],  // rollup legible
+  R_PROJECT_ROLL: ['ProjectName','Proyecto','Project'],
+  R_BRAND_ROLL:   ['BrandName','Marca','Brand'],
 
-      // Assets (Attachment/Attachments/Media/Image…)
-      const assets =
-        filesToAssets(p["Attachment"]) ||
-        filesToAssets(p["Attachments"]) ||
-        filesToAssets(p["Media"]) ||
-        filesToAssets(p["Image"]) ||
-        [];
+  COPY:           ['Copy','Caption','Texto'],
+};
 
-      const thumb = assets[0]?.url || null;
+function readProp(obj, aliases){
+  for (const k of aliases){ if (obj[k]!==undefined) return obj[k]; }
+  return undefined;
+}
 
-      items.push({
-        id: r.id,
-        title: getTitleFromProps(p),
-        caption: rtText(p["Caption"]) || rtText(p["Description"]) || rtText(p["Text"]) || "",
-        platform: getSelect(p, ["Platform", "Platforms", "Channel", "Social", "Plataforma"]) || "Other",
-        status:   getSelect(p, ["Status", "Estado"]) || null,
-        pinned:   getCheckbox(p, ["Pinned", "Pin", "Destacado", "Fijado"]) || false,
-        date:     dateStr(p["Publish Date"]) || dateStr(p["Date"]) || dateStr(p["Fecha"]) || "",
-        link:     getUrlFromProps(p) || null,
-        assets,                 // [{type:'image'|'video', url}]
-        isVideo: assets.some(a => a.type === "video"),
-        image: thumb,           // compat con frontend
-      });
-    }
+function processPost(p){
+  const props = p.properties || {};
+  const title = titleText(readProp(props,P.NAME)) || 'Untitled';
+  const date  = dateValue(readProp(props,P.DATE)) || '';
+  const status= readProp(props,P.STATUS)?.status?.name || '';
+  const type  = readProp(props,P.TYPE)?.select?.name || '';
+  const platforms = multiSelectNames(readProp(props,P.PLATFORM));
 
-    // 2) BIO (opcional)
-    let bio = null;
-    const bioDb = process.env.BIO_DATABASE_ID || process.env.BIO_SETTINGS_DATABASE_ID;
-    if (bioDb) {
-      const qb = await notionFetch(`/databases/${bioDb}/query`, {
-        page_size: 1,
-        sorts: [{ timestamp: "last_edited_time", direction: "descending" }],
-      });
-      const row = (qb.results || [])[0];
-      if (row) {
-        const bp = row.properties || {};
-        const avatarFiles = filesToAssets(bp["Avatar"]);
-        const bioText = rtText(bp["Bio"]) || rtText(bp["Text"]) || ""; // <- campo Bio de la tabla
-        bio = {
-          username: rtText(bp["Username"]) || rtText(bp["Handle"]) || "",
-          name: rtText(bp["Name"]) || "",
-          textLines: bioText ? bioText.split("\n").map(s=>s.trim()).filter(Boolean) : [],
-          url: urlProp(bp["URL"]) || urlProp(bp["Link"]) || "",
-          avatar: avatarFiles[0]?.url || "",
-        };
-      }
-    }
-    if (!bio) {
-      // Fallback envs
-      bio = {
-        username: process.env.BIO_USERNAME || "",
-        name: process.env.BIO_NAME || "",
-        textLines: (process.env.BIO_TEXT || "").split("\n").map(s=>s.trim()).filter(Boolean),
-        url: process.env.BIO_URL || "",
-        avatar: process.env.BIO_AVATAR || "",
-      };
-    }
+  const client = rollupText(readProp(props,P.R_CLIENT_ROLL));
+  const project= rollupText(readProp(props,P.R_PROJECT_ROLL));
+  const brand  = rollupText(readProp(props,P.R_BRAND_ROLL));
 
-    // 3) Filtros dinámicos (por frecuencia) + IG primero
-    const platforms = items.map(i => i.platform).filter(Boolean);
-    const statuses  = items.map(i => i.status).filter(Boolean);
-    const P = freqSort(platforms);
-    const S = freqSort(statuses);
-    const igIndex = P.findIndex(x => (x||"").toLowerCase() === "instagram");
-    if (igIndex > 0) { P.splice(0, 0, P.splice(igIndex, 1)[0]); }
+  const owner  = readProp(props,P.OWNER)?.people?.[0]?.name || '';
+  const owner_initials = owner ? owner.slice(0,2).toUpperCase() : '';
+  // color simple determinista por hash
+  const palette=['#10B981','#8B5CF6','#EC4899','#F59E0B','#3B82F6','#EF4444','#FCD34D','#14B8A6','#A855F7','#22C55E'];
+  let hash=0; for (let i=0;i<owner.length;i++) hash=(hash*31+owner.charCodeAt(i))|0;
+  const owner_color = owner ? palette[Math.abs(hash)%palette.length] : '';
 
-    res.status(200).json({
-      ok: true,
-      dbId,
-      items,
-      bio,
-      filters: { platforms: P, status: S }
-    });
-  } catch (err) {
-    res.status(200).json({ ok:false, error: String(err.message || err) });
+  const archived = !!(readProp(props,P.ARCHIVED)?.checkbox);
+  const hidden   = !!(readProp(props,P.HIDE)?.checkbox);
+
+  const copyText = (readProp(props,P.COPY)?.rich_text||[]).map(t=>t.plain_text).join('');
+
+  return {
+    id:p.id, title, date, status, type, platforms, client, project, brand,
+    owner, owner_initials, owner_color,
+    archived, hidden,
+    pinned: !!props.Pinned?.checkbox,
+    copy: copyText,
+    assets: extractAssets(props)
+  };
+}
+
+function buildStatusFilter(q){
+  // Published Only vs All
+  if (q.status==='all') return null;
+  // Published Only: Publicado, Entregado, Scheduled, Aprobado
+  return {
+    or: [
+      { property:'Status', status:{ equals:'Publicado'} },
+      { property:'Status', status:{ equals:'Entregado'} },
+      { property:'Status', status:{ equals:'Scheduled'} },
+      { property:'Status', status:{ equals:'Aprobado'} },
+    ]
+  };
+}
+
+function baseFilters(q){
+  const arr = [
+    { property: 'Archivado', checkbox:{ equals:false }},
+    { property: 'Archived',  checkbox:{ equals:false }},
+    { property: 'Hide',      checkbox:{ equals:false }},
+    { property: 'Hidden',    checkbox:{ equals:false }},
+  ];
+  const st = buildStatusFilter(q);
+  if (st) arr.push(st);
+
+  // platform (multi-select contains)
+  if (q.platform){
+    arr.push({ property:'Platform', multi_select:{ contains:q.platform }});
   }
+  // these use rollups legibles (ClientName/ProjectName/BrandName). Si no existen, el filtro no se aplica.
+  if (q.client){
+    arr.push({ property:'ClientName', rich_text:{ equals:q.client }});
+  }
+  if (q.project){
+    arr.push({ property:'ProjectName', rich_text:{ equals:q.project }});
+  }
+  if (q.brand){
+    arr.push({ property:'BrandName', rich_text:{ equals:q.brand }});
+  }
+  if (q.q){
+    arr.push({ property:'Name', title:{ contains:q.q }});
+  }
+  return arr;
+}
+
+export default async function handler(req, res){
+  const url = new URL(req.url, 'http://x');
+  const q = {
+    meta: url.searchParams.get('meta'),
+    limit: Math.min(parseInt(url.searchParams.get('limit')||'12',10), 100),
+    page:  Math.max(parseInt(url.searchParams.get('page')||'0',10), 0),
+    status: (url.searchParams.get('status')||'published'),
+    client: url.searchParams.get('client')||'',
+    project:url.searchParams.get('project')||'',
+    brand:  url.searchParams.get('brand')||'',
+    platform:url.searchParams.get('platform')||'',
+    q:      url.searchParams.get('q')||''
+  };
+
+  try{
+    if (q.meta){
+      const filters = await collectFilters();
+      return res.status(200).json({ filters });
+    }
+
+    const body = {
+      filter: { and: baseFilters(q) },
+      sorts:  [{ property:'Publish Date', direction:'descending' }, { property:'Fecha', direction:'descending' }],
+      page_size: q.limit
+      // start_cursor: could be wired later for deep pagination
+    };
+
+    const r = await fetch(`${NOTION_API}/databases/${process.env.NOTION_DATABASE_ID}/query`,{
+      method:'POST',
+      headers:{
+        'Authorization':`Bearer ${process.env.NOTION_TOKEN}`,
+        'Notion-Version':NOTION_VERSION,
+        'Content-Type':'application/json'
+      },
+      body: JSON.stringify(body)
+    });
+
+    if (!r.ok){
+      const err = await r.json().catch(()=>({}));
+      return res.status(500).json({ error:'Notion query failed', detail: err });
+    }
+
+    const json = await r.json();
+    const posts = (json.results||[]).map(processPost).filter(p=>!p.archived && !p.hidden);
+
+    return res.status(200).json({
+      posts,
+      has_more: !!json.has_more,
+      next_cursor: json.next_cursor||null
+    });
+  }catch(e){
+    return res.status(500).json({ error:e.message });
+  }
+}
+
+// obtiene listas para selects (rápido). Si no tienes DBs separadas, se arma desde últimos 100.
+async function collectFilters(){
+  const r = await fetch(`${NOTION_API}/databases/${process.env.NOTION_DATABASE_ID}/query`,{
+    method:'POST',
+    headers:{
+      'Authorization':`Bearer ${process.env.NOTION_TOKEN}`,
+      'Notion-Version':NOTION_VERSION,
+      'Content-Type':'application/json'
+    },
+    body: JSON.stringify({ page_size: 100, sorts:[{ property:'Publish Date', direction:'descending'}] })
+  });
+  const json = await r.json();
+  const results = json.results||[];
+  const posts = results.map(processPost);
+
+  const clients   = [...new Set(posts.map(p=>p.client).filter(Boolean))].sort();
+  const projects  = [...new Set(posts.map(p=>p.project).filter(Boolean))].sort();
+  const platforms = [...new Set(posts.flatMap(p=>p.platforms||[]))].sort();
+
+  return { clients, projects, platforms };
 }
